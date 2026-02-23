@@ -1,0 +1,32 @@
+[project]
+name = "comfyui-uml"
+version = "0.1.0"
+description = "ComfyUI UML: custom nodes for generating diagrams via Kroki (Mermaid, PlantUML, GraphViz, D2, etc.). Web and optional local rendering."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.24.0",
+]
+
+[project.urls]
+Repository = "https://github.com/antoienbou12/ComfyUI-UML"
+
+[tool.comfy]
+PublisherId = "antoienbou12"
+DisplayName = "ComFyUML"
+Icon = ""
+
+[tool.comfy-test]
+levels = ["syntax", "install", "registration", "instantiation", "execution"]
+publish = true
+
+[tool.comfy-test.workflows]
+timeout = 300
+cpu = ["uml_mermaid.json", "uml_plantuml.json", "uml_graphviz.json"]
+
+[tool.comfy-test.platforms]
+linux = true
+macos = true
+windows = true
+windows_portable = true

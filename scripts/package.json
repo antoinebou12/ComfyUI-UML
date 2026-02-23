@@ -1,0 +1,10 @@
+{
+  "name": "comfyui-uml-mermaid",
+  "version": "1.0.0",
+  "description": "Local Mermaid renderer for ComfyUI-UML using beautiful-mermaid",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "beautiful-mermaid": "^1.0.0"
+  }
+}

@@ -1,0 +1,6 @@
+httpx>=0.24.0
+# Pillow and numpy/torch are usually provided by ComfyUI
+# For local graphviz backend (optional):
+# graphviz
+# For local Mermaid PNG output (optional; SVG works without it):
+# cairosvg

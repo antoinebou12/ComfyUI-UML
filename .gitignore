@@ -1,0 +1,2 @@
+# Local Mermaid deps (run npm install in scripts/ to enable)
+scripts/node_modules/

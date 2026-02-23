@@ -1,0 +1,8 @@
+# Optional: use with comfy-env for dependency management.
+# Uncomment and adjust if you use comfy-env (https://github.com/PozzettiAndrea/comfy-env).
+
+# [node_reqs]
+# ComfyUI_essentials = "cubiq/ComfyUI_essentials"
+
+# [pypi-dependencies]
+# httpx = "*"
