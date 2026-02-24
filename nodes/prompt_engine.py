@@ -4,6 +4,7 @@ LLM Prompt Engine node: build prompt from template + positive/negative, optional
 
 from pathlib import Path
 
+
 # Prompts directory at repo root (next to nodes/)
 def _prompts_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "prompts"
@@ -30,7 +31,9 @@ def _load_prompt_file(name: str) -> tuple[str, str, str]:
     return template, positive, negative
 
 
-def _apply_placeholders(text: str, description: str, diagram_type: str = "", format_name: str = "") -> str:
+def _apply_placeholders(
+    text: str, description: str, diagram_type: str = "", format_name: str = ""
+) -> str:
     """Replace {{description}}, {{diagram_type}}, {{format}} in text."""
     text = text.replace("{{description}}", description)
     text = text.replace("{{diagram_type}}", diagram_type)
@@ -61,7 +64,10 @@ class LLMPromptEngine:
                 ),
                 "description": (
                     "STRING",
-                    {"default": "Kroki – Creates diagrams from textual descriptions!", "multiline": False},
+                    {
+                        "default": "Kroki – Creates diagrams from textual descriptions!",
+                        "multiline": False,
+                    },
                 ),
             },
             "optional": {
@@ -112,8 +118,12 @@ class LLMPromptEngine:
         dt = (diagram_type or "").strip()
         fmt = (output_format or "").strip()
         template = _apply_placeholders(template, desc, dt, fmt)
-        positive_instruction = _apply_placeholders((positive_instruction or "").strip(), desc, dt, fmt)
-        negative_instruction = _apply_placeholders((negative_instruction or "").strip(), desc, dt, fmt)
+        positive_instruction = _apply_placeholders(
+            (positive_instruction or "").strip(), desc, dt, fmt
+        )
+        negative_instruction = _apply_placeholders(
+            (negative_instruction or "").strip(), desc, dt, fmt
+        )
 
         # Full prompt: template + positive as instructions (so one string for simple LLM nodes)
         prompt = template

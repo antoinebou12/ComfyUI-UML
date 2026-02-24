@@ -21,6 +21,7 @@ from .kroki_client import (
 
 from .default_code import get_default_code
 
+
 def _normalize_to_code(value: object) -> str:
     """Normalize LLM/text output to diagram source string.
     Handles str, tuple/list (first element), and objects with text-like attributes.
@@ -50,6 +51,7 @@ def _svg_bytes_to_tensor(svg_bytes: bytes) -> torch.Tensor | None:
         return None
     try:
         import cairosvg
+
         png_bytes = cairosvg.svg2png(bytestring=svg_bytes)
         if png_bytes and len(png_bytes) >= 8 and png_bytes[:8] == b"\x89PNG\r\n\x1a\n":
             return _raster_bytes_to_tensor(png_bytes)
@@ -94,8 +96,14 @@ class UMLDiagram:
                 ),
             },
             "optional": {
-                "code_input": ("*", {}),  # When connected, overrides code widget (e.g. from any LLM output node)
-                "output_format": (["png", "svg", "jpeg", "pdf", "txt", "base64"], {"default": "png"}),
+                "code_input": (
+                    "*",
+                    {},
+                ),  # When connected, overrides code widget (e.g. from any LLM output node)
+                "output_format": (
+                    ["png", "svg", "jpeg", "pdf", "txt", "base64"],
+                    {"default": "png"},
+                ),
                 "diagram_options": (
                     "STRING",
                     {"default": "", "multiline": False, "visible_when": {"backend": ["web"]}},
@@ -167,6 +175,7 @@ class UMLDiagram:
                 return
             try:
                 from server import PromptServer
+
                 if getattr(PromptServer, "instance", None) is None:
                     return
                 payload = {"node": unique_id, "value": value, "max": max_val}
@@ -213,7 +222,7 @@ class UMLDiagram:
         try:
             folder_paths = __import__("folder_paths", fromlist=["get_output_directory"])
             output_dir = folder_paths.get_output_directory()
-        except Exception as e:
+        except Exception:
             output_dir = os.path.expanduser("~/ComfyUI/output")
             try:
                 os.makedirs(output_dir, exist_ok=True)
@@ -226,7 +235,14 @@ class UMLDiagram:
         except OSError as e:
             raise RuntimeError(f"Failed to create output/uml directory: {e}") from e
 
-        ext_map = {"png": "png", "svg": "svg", "jpeg": "jpeg", "pdf": "pdf", "txt": "txt", "base64": "txt"}
+        ext_map = {
+            "png": "png",
+            "svg": "svg",
+            "jpeg": "jpeg",
+            "pdf": "pdf",
+            "txt": "txt",
+            "base64": "txt",
+        }
         ext = ext_map.get(output_format, "png")
         if output_format == "base64" and len(data) >= 8:
             if data[:8] == b"\x89PNG\r\n\x1a\n":

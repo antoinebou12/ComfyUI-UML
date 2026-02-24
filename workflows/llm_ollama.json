@@ -99,8 +99,9 @@
       },
       "widgets_values": [
         "",
-        "openai",
-        "gpt-4o-mini",
+        "ollama",
+        "llama3.2",
+        "",
         "",
         ""
       ]
@@ -241,7 +242,7 @@
   ],
   "groups": [
     {
-      "title": "LLM \u2192 Kroki",
+      "title": "LLM (Ollama) \u2192 Kroki",
       "bound": [
         80,
         80,

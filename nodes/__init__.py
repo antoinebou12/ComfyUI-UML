@@ -3,17 +3,20 @@
 from .llm_call import LLMCall
 from .prompt_engine import LLMPromptEngine
 from .uml_diagram import UMLDiagram
+from .uml_viewer_url import UMLViewerURL
 
 NODE_CLASS_MAPPINGS = {
     "LLMCall": LLMCall,
     "LLMPromptEngine": LLMPromptEngine,
     "UMLDiagram": UMLDiagram,
+    "UMLViewerURL": UMLViewerURL,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LLMCall": "LLM Call (OpenAI/Anthropic)",
+    "LLMCall": "LLM Call (OpenAI/Anthropic/Ollama)",
     "LLMPromptEngine": "LLM Prompt Engine",
     "UMLDiagram": "UML Render (Mermaid/PlantUML/etc)",
+    "UMLViewerURL": "Diagram Viewer URL",
 }
 
 __all__ = [
@@ -22,4 +25,5 @@ __all__ = [
     "LLMCall",
     "LLMPromptEngine",
     "UMLDiagram",
+    "UMLViewerURL",
 ]

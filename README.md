@@ -17,6 +17,7 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - [Updating](#updating)
 - [Usage](#usage)
 - [Testing](#testing)
+- [Development](#development)
 - [Workflows](#workflows)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
@@ -57,19 +58,60 @@ Full usage, outputs, viewer, and LLM workflow: [docs/Usage.md](docs/Usage.md). D
 
 CI runs [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to `main`. See [docs/Testing.md](docs/Testing.md) for config ([comfy-test.toml](comfy-test.toml)) and adding workflows.
 
+## Development
+
+To run linting and formatting on commit (JSON and Python):
+
+1. Install dev dependencies: `pip install -e ".[dev]"` or `uv sync --extra dev`.
+2. Install pre-commit hooks: `pre-commit install`.
+
+Pre-commit will format JSON (key order preserved) and run Ruff (lint + format) on Python. To run on all files: `pre-commit run --all-files`.
+
 ## Workflows
 
 - **uml_quickstart.json** — Mermaid, PlantUML, GraphViz, D2; quick tryout.
+- **uml_single_node.json** — Single UMLDiagram node (normalized format; use this if you see "missing nodes" or queue errors with a pasted workflow).
 - **uml_all_diagrams.json** — All 28 diagram types.
 - **uml_mermaid.json**, **uml_plantuml.json**, **uml_graphviz.json** — Single-node examples.
 - **llm_kroki_logo.json** — LLM + Prompt Engine → Kroki (needs API key).
+
+To regenerate all workflow files, add viewer nodes, and check that format lists stay in sync, run `python scripts/generate_all_diagrams_workflow.py` (no arguments).
 
 Full list, loading tips, and format: [docs/Workflows.md](docs/Workflows.md). Workflow format and normalizer: [docs/WorkflowFormat.md](docs/WorkflowFormat.md).
 
 ## Troubleshooting
 
-- **"Missing nodes" / UMLDiagram not found** — Restart ComfyUI after installing or updating. Load a workflow from this repo's `workflows/` folder (e.g. **Load** → `workflows/uml_plantuml.json`) instead of from Manager cache or paste.
-- **KeyError: class_type**, **"SyntaxError: Unexpected non-whitespace character after JSON at position 4"**, or other JSON/prompt errors when queueing — The workflow graph format may be wrong or the frontend sent the wrong payload. Load from `workflows/` (e.g. `uml_quickstart.json`, `uml_plantuml.json`) or fix the file with the normalizer script (see [docs/WorkflowFormat.md](docs/WorkflowFormat.md)).
+### UV install fails in WSL (project on Windows path)
+
+If you use **WSL** with the project on a Windows mount (e.g. `/mnt/c/Users/.../ComfyUI-UML`) and `uv sync` fails with "failed to copy file" or "No such file or directory" when installing (e.g. `prompt_toolkit`), the cause is usually **cross-filesystem** install: UV’s cache is on the Linux filesystem and the `.venv` is on the Windows drive.
+
+**Option A (recommended)** — Create the venv on the Linux filesystem so cache and venv are on the same FS:
+
+```bash
+rm -rf .venv
+uv venv --path ~/.venvs/comfyui-uml
+uv sync --directory . --python $(which python3) --venv ~/.venvs/comfyui-uml
+source ~/.venvs/comfyui-uml/bin/activate
+```
+
+Then run dev commands with that venv activated (e.g. `pre-commit run --all-files`).
+
+**Option B** — Run UV from **Windows** (PowerShell), not WSL, so project and `.venv` are both on the Windows filesystem:
+
+```powershell
+cd "C:\Users\antoi\OneDrive\Bureau\ComfyUI-UML"
+Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue
+uv sync
+.\.venv\Scripts\Activate.ps1
+```
+
+**Option C** — If you must keep `.venv` under the Windows mount: set `export UV_LINK_MODE=copy` and retry; if it still fails, move the repo to a shorter path (e.g. `C:\dev\ComfyUI-UML`) or ensure OneDrive isn’t using “files on demand” for that folder.
+
+### Other issues
+
+- **"Missing nodes" / UMLDiagram not found** — Restart ComfyUI after installing or updating. **Always load workflows from this repo's `workflows/` folder** (e.g. **Load** → `workflows/uml_plantuml.json` or `workflows/uml_single_node.json`) instead of from Manager cache, URL, or paste. That ensures the graph format is valid and the in-browser normalizer runs.
+- **KeyError: class_type**, **"SyntaxError: Unexpected non-whitespace character after JSON at position 4"**, or **"Prompt execution failed"** when queueing — ComfyUI expects a specific graph format (camelCase `lastNodeId`/`lastLinkId`, object-style `links`, etc.). If the workflow was pasted or loaded from a bad source, the frontend can send a malformed prompt.
+  - **Fix:** Load a workflow from the `workflows/` folder (e.g. `workflows/uml_plantuml.json`, `workflows/uml_single_node.json`). If you only have a JSON file that shows these errors, normalize it from the ComfyUI-UML repo root: `py scripts/generate_all_diagrams_workflow.py normalize yourfile.json -o fixed.json`, then in ComfyUI use **Load** and open `fixed.json`.
 - **"Cannot convert undefined or null to object" when loading** — Load the workflow from the `workflows/` folder so the in-browser normalizer runs, or fix the JSON with `scripts/generate_all_diagrams_workflow.py normalize` (see [docs/WorkflowFormat.md](docs/WorkflowFormat.md)).
 
 ## License

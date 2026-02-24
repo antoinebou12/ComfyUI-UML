@@ -320,6 +320,20 @@ function _sanitizeGroups(groups) {
   return out;
 }
 
+/** Minimal valid workflow so ComfyUI never receives null/undefined. Return a new object each time. */
+function _minimalWorkflow() {
+  return {
+    nodes: [],
+    links: [],
+    groups: [],
+    config: {},
+    extra: {},
+    version: 0.4,
+    lastNodeId: 0,
+    lastLinkId: 0,
+  };
+}
+
 function _normalizeWorkflowData(raw) {
   if (!raw) return raw;
   let data = raw;
@@ -335,9 +349,18 @@ function _normalizeWorkflowData(raw) {
   const nodes = Array.isArray(data.nodes) ? data.nodes : [];
   data.nodes = nodes;
 
+  for (const node of nodes) {
+    if (node && typeof node === "object") {
+      if (node.inputs == null) node.inputs = [];
+      if (node.outputs == null) node.outputs = [];
+    }
+  }
+
   const links = data.links;
   if (!Array.isArray(links) || _isLinksCorrupted(links)) {
     data.links = _rebuildLinks(nodes);
+  } else if (data.links == null) {
+    data.links = [];
   }
 
   let lastLink = data.lastLinkId != null ? data.lastLinkId : data.last_link_id;
@@ -374,6 +397,9 @@ function _installWorkflowNormalizer() {
     if (typeof original !== "function") return false;
     if (original.__umlPatched) return true;
     app.loadGraphData = async function (graphData, ...rest) {
+      if (graphData == null) {
+        return await original.call(this, _minimalWorkflow(), ...rest);
+      }
       let normalized = graphData;
       try {
         normalized = _normalizeWorkflowData(graphData);
@@ -389,8 +415,10 @@ function _installWorkflowNormalizer() {
             /undefined or null to object/i.test(e.message))
         ) {
           try {
-            const safe = _normalizeWorkflowData(graphData);
-            if (safe && typeof safe === "object") {
+            let safe = _normalizeWorkflowData(graphData);
+            if (!safe || typeof safe !== "object") {
+              safe = _minimalWorkflow();
+            } else {
               safe.groups = [];
             }
             return await original.call(this, safe, ...rest);

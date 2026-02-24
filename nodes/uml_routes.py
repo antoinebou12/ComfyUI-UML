@@ -1,6 +1,7 @@
 """
 Register ComfyUI-UML API route: POST /comfyui-uml/save to save diagram from viewer to output/uml/.
 """
+
 import os
 import time
 
@@ -19,6 +20,7 @@ MAX_FILENAME_LEN = 200
 def _get_uml_output_dir():
     try:
         import folder_paths
+
         output_dir = folder_paths.get_output_directory()
     except Exception:
         output_dir = os.path.expanduser("~/ComfyUI/output")
@@ -46,14 +48,20 @@ async def _save_diagram_handler(request):
         return web.json_response({"error": str(e)}, status=400)
     file_field = data.get("file") or data.get("image")
     if not file_field or not hasattr(file_field, "file") and not hasattr(file_field, "read"):
-        return web.json_response({"error": "No file in request (use field 'file' or 'image')"}, status=400)
+        return web.json_response(
+            {"error": "No file in request (use field 'file' or 'image')"}, status=400
+        )
     try:
         if hasattr(file_field, "file"):
             body = file_field.file.read()
             filename = getattr(file_field, "filename", None) or ""
             content_type = getattr(file_field, "content_type", None) or ""
         else:
-            body = file_field.read() if callable(getattr(file_field, "read", None)) else bytes(file_field)
+            body = (
+                file_field.read()
+                if callable(getattr(file_field, "read", None))
+                else bytes(file_field)
+            )
             filename = getattr(file_field, "filename", "") or ""
             content_type = getattr(file_field, "content_type", "") or ""
     except Exception as e:
@@ -61,7 +69,12 @@ async def _save_diagram_handler(request):
     if not body:
         return web.json_response({"error": "Empty file"}, status=400)
     if content_type and content_type.split(";")[0].strip().lower() not in ALLOWED_MIME:
-        return web.json_response({"error": f"Disallowed type: {content_type}. Use image/png, image/svg+xml, or image/jpeg"}, status=400)
+        return web.json_response(
+            {
+                "error": f"Disallowed type: {content_type}. Use image/png, image/svg+xml, or image/jpeg"
+            },
+            status=400,
+        )
     ext = _safe_ext(content_type, filename)
     safe_name = f"uml_saved_{int(time.time() * 1000)}.{ext}"
     if len(safe_name) > MAX_FILENAME_LEN:

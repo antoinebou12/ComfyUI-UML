@@ -11,4 +11,4 @@
 
 - [UML Render (Mermaid/PlantUML/etc)](UMLDiagram.md)
 - [LLM Prompt Engine](LLMPromptEngine.md)
-- [LLM Call (OpenAI/Anthropic)](LLMCall.md)
+- [LLM Call (OpenAI/Anthropic/Ollama)](LLMCall.md)

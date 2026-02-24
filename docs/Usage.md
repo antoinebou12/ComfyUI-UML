@@ -19,13 +19,14 @@
 ## Opening the diagram in the viewer
 
 1. **From the node**: Right-click the UML node → **Open in viewer** (uses current diagram code).
-2. **Manual URL**: Copy **kroki_url** and open `http://localhost:8188/extensions/ComfyUI-UML/viewer.html?url=<paste_kroki_url>`. Data URLs supported: `?url=data:image/svg+xml;base64,...`.
-3. **Toolbar**: zoom (Fit, 100%, ±), **Save locally**, **Save to ComfyUI**, Copy link.
+2. **Diagram Viewer URL node** (category UML): Add **Diagram Viewer URL** to your workflow and connect **kroki_url** (or **content_for_viewer**) from the UML Render node. It outputs **viewer_url** — the full viewer page path (e.g. `/extensions/ComfyUI-UML/viewer.html?url=...`) to open or pass to other nodes. Used in **workflows/uml_quickstart.json** and **workflows/llm_kroki.json**.
+3. **Manual URL**: Copy **kroki_url** and open `http://localhost:8188/extensions/ComfyUI-UML/viewer.html?url=<paste_kroki_url>`. Data URLs supported: `?url=data:image/svg+xml;base64,...`.
+4. **Toolbar**: zoom (Fit, 100%, ±), **Save locally**, **Save to ComfyUI**, Copy link.
 
 ## LLM + Prompt Engine workflow
 
 1. **LLM Prompt Engine** (category UML): Builds a prompt from a template and positive/negative instructions; placeholders `{{description}}`, `{{diagram_type}}`, `{{format}}`; **template_file** loads presets from `prompts/` (e.g. `kroki_logo.txt`). Outputs: **prompt**, **positive**, **negative**.
-2. **LLM Call (OpenAI/Anthropic)** (category UML): Sends **prompt** (and optionally **negative_prompt**). Set **OPENAI_API_KEY** or **ANTHROPIC_API_KEY**, or pass **api_key** in the node. Output **text** → UML node **code_input**.
+2. **LLM Call (OpenAI/Anthropic/Ollama)** (category UML): Sends **prompt** (and optionally **negative_prompt**). For OpenAI/Anthropic set **OPENAI_API_KEY** or **ANTHROPIC_API_KEY**, or pass **api_key** in the node. For **Ollama** no key is needed; ensure Ollama is running locally and the model is pulled. Output **text** → UML node **code_input**.
 3. Connect **LLM Call** → **code_input**, set **diagram_type** and **output_format**, run to get diagram from LLM-generated code.
 
 **Workflow file**: Load **workflows/llm_kroki_logo.json** for Prompt Engine → LLM Call → UML Render. Set API key and run.

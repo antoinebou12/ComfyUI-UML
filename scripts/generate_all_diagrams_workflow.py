@@ -1,15 +1,20 @@
 """
-Workflow tools: generate diagram workflows and normalize ComfyUI workflow JSON.
-This script is the single entry point for both; use the "normalize" subcommand
-instead of the former scripts/normalize_workflow.py.
+Workflow tools: generate diagram workflows, normalize ComfyUI workflow JSON,
+add viewer nodes, and check format sync.
 
-Default and "generate": generate workflows, then normalize workflows/*.json
-and example_workflows/*.json in place.
+Default (no subcommand): full pipeline — generate workflows, normalize,
+add UMLViewerURL to workflows that have UMLDiagram, normalize again,
+then verify web/ComfyUI-UML.js SUPPORTED_FORMATS matches nodes/kroki_client.py
+(exits 1 if they differ).
 
   python scripts/generate_all_diagrams_workflow.py
+  → generate → normalize → add viewer → normalize → check formats sync
+
+Generate only (no add-viewer, no sync check):
+
   python scripts/generate_all_diagrams_workflow.py generate
-  → Writes workflows/uml_<type>.json and uml_all_diagrams.json, then normalizes them
-    and any example_workflows/*.json
+  → Writes workflows/uml_<type>.json and uml_all_diagrams.json, then normalizes
+    them and any example_workflows/*.json
 
 Normalize only (specific files or stdin):
 
@@ -20,6 +25,7 @@ Normalize only (specific files or stdin):
   python scripts/generate_all_diagrams_workflow.py normalize -  (stdin → stdout)
   python scripts/generate_all_diagrams_workflow.py normalize workflows/*.json -o out_dir
 """
+
 from __future__ import annotations
 
 import argparse
@@ -108,21 +114,25 @@ def _rebuild_links(nodes: list) -> list[dict]:
                 slot = inp.get("slot_index") if inp.get("slot_index") is not None else i
                 id_to_target[link_id] = (nid, slot)
 
-    link_ids = sorted(set(id_to_origin.keys()) | set(id_to_target.keys()), key=lambda x: (type(x).__name__, x))
+    link_ids = sorted(
+        set(id_to_origin.keys()) | set(id_to_target.keys()), key=lambda x: (type(x).__name__, x)
+    )
     links = []
     for link_id in link_ids:
         orig = id_to_origin.get(link_id)
         tgt = id_to_target.get(link_id)
         if not orig or not tgt:
             continue
-        links.append({
-            "id": link_id,
-            "origin_id": orig[0],
-            "origin_slot": orig[1],
-            "target_id": tgt[0],
-            "target_slot": tgt[1],
-            "type": orig[2],
-        })
+        links.append(
+            {
+                "id": link_id,
+                "origin_id": orig[0],
+                "origin_slot": orig[1],
+                "target_id": tgt[0],
+                "target_slot": tgt[1],
+                "type": orig[2],
+            }
+        )
     return links
 
 
@@ -204,17 +214,21 @@ def normalize(data: dict) -> dict:
     else:
         data["links"] = links
 
-    last_link = data.get("lastLinkId") if data.get("lastLinkId") is not None else data.get("last_link_id")
+    last_link = (
+        data.get("lastLinkId") if data.get("lastLinkId") is not None else data.get("last_link_id")
+    )
     if data.get("links") and (last_link is None or last_link == 0):
         try:
-            last_link = max(int(l.get("id") or 0) for l in data["links"])
+            last_link = max(int(link.get("id") or 0) for link in data["links"])
         except (ValueError, TypeError):
             pass
     if last_link is not None:
         data["lastLinkId"] = int(last_link) if isinstance(last_link, (int, float)) else last_link
     data.pop("last_link_id", None)
 
-    last_node = data.get("lastNodeId") if data.get("lastNodeId") is not None else data.get("last_node_id")
+    last_node = (
+        data.get("lastNodeId") if data.get("lastNodeId") is not None else data.get("last_node_id")
+    )
     if last_node is None and nodes:
         try:
             last_node = max(int(n.get("id") or 0) for n in nodes)
@@ -263,6 +277,8 @@ def run_normalize(args: argparse.Namespace) -> int:
     if not inputs:
         workflows_dir = root / "workflows"
         example_dir = root / "example_workflows"
+        workflows_dir.mkdir(parents=True, exist_ok=True)
+        example_dir.mkdir(parents=True, exist_ok=True)
         to_normalize: list[Path] = []
         if workflows_dir.is_dir():
             to_normalize.extend(sorted(workflows_dir.glob("*.json")))
@@ -328,9 +344,11 @@ FORMAT_ORDER = ["png", "svg", "jpeg", "pdf", "txt", "base64"]
 def _load_kroki_and_default_code() -> None:
     global DIAGRAM_TYPES, SUPPORTED_FORMATS, get_default_code
     from nodes.kroki_client import DIAGRAM_TYPES as _DT, SUPPORTED_FORMATS as _SF  # noqa: E402
+
     DIAGRAM_TYPES = _DT
     SUPPORTED_FORMATS = _SF
     import nodes.default_code as _default_code
+
     get_default_code = _default_code.get_default_code
 
 
@@ -390,44 +408,224 @@ def run_generate() -> int:
         fmt_idx = format_index(dtype)
         col, row = i % 4, i // 4
         x, y = 100 + col * 420, 100 + row * 320
-        nodes.append({
-            "id": i + 1,
-            "type": "UMLDiagram",
-            "pos": [x, y],
-            "size": [400, 300],
-            "flags": {},
-            "order": i,
-            "mode": 0,
-            "outputs": list(outputs),
-            "properties": {"Node name for S/R": "UMLDiagram"},
-            "widgets_values": [0, "https://kroki.io", i, code, fmt_idx],
-        })
+        nodes.append(
+            {
+                "id": i + 1,
+                "type": "UMLDiagram",
+                "pos": [x, y],
+                "size": [400, 300],
+                "flags": {},
+                "order": i,
+                "mode": 0,
+                "outputs": list(outputs),
+                "properties": {"Node name for S/R": "UMLDiagram"},
+                "widgets_values": [0, "https://kroki.io", i, code, fmt_idx],
+            }
+        )
         per_type = normalize(build_single_node_workflow(dtype, i))
         out_per = workflows_dir / f"uml_{dtype}.json"
         with open(out_per, "w", encoding="utf-8") as f:
             json.dump(per_type, f, indent=2)
         logger.info("Wrote %s", out_per)
     groups = [
-        {"title": "UML (PlantUML, Mermaid, GraphViz, D2, ERD, Nomnoml, UMLet)", "nodes": [17, 12, 11, 6, 9, 13, 24]},
+        {
+            "title": "UML (PlantUML, Mermaid, GraphViz, D2, ERD, Nomnoml, UMLet)",
+            "nodes": [17, 12, 11, 6, 9, 13, 24],
+        },
         {"title": "Block / Sequence diagrams", "nodes": [1, 2, 19, 14, 15, 18]},
         {"title": "Data (DBML, Vega, Vega-Lite, WaveDrom)", "nodes": [7, 25, 26, 27]},
-        {"title": "Other (BPMN, Bytefield, C4, Ditaa, Excalidraw, Pikchr, Structurizr, Svgbob, Symbolator, TikZ, WireViz)", "nodes": [3, 4, 5, 8, 10, 16, 20, 21, 22, 23, 28]},
+        {
+            "title": "Other (BPMN, Bytefield, C4, Ditaa, Excalidraw, Pikchr, Structurizr, Svgbob, Symbolator, TikZ, WireViz)",
+            "nodes": [3, 4, 5, 8, 10, 16, 20, 21, 22, 23, 28],
+        },
     ]
-    wf = normalize({
-        "lastNodeId": 28,
-        "lastLinkId": 0,
-        "nodes": nodes,
-        "links": [],
-        "groups": groups,
-        "config": {},
-        "extra": {},
-        "version": 0.4,
-    })
+    wf = normalize(
+        {
+            "lastNodeId": 28,
+            "lastLinkId": 0,
+            "nodes": nodes,
+            "links": [],
+            "groups": groups,
+            "config": {},
+            "extra": {},
+            "version": 0.4,
+        }
+    )
     out_all = workflows_dir / "uml_all_diagrams.json"
     with open(out_all, "w", encoding="utf-8") as f:
         json.dump(wf, f, indent=2)
     logger.info("Wrote %s", out_all)
+
+    # Write LLM Ollama workflow to workflows/ and example_workflows/
+    example_dir = root / "example_workflows"
+    example_dir.mkdir(parents=True, exist_ok=True)
+    llm_ollama = _build_llm_ollama_workflow()
+    for dest_dir in (workflows_dir, example_dir):
+        out_ollama = dest_dir / "llm_ollama.json"
+        with open(out_ollama, "w", encoding="utf-8") as f:
+            json.dump(llm_ollama, f, indent=2)
+        logger.info("Wrote %s", out_ollama)
     return 0
+
+
+def _build_llm_ollama_workflow() -> dict:
+    """Build the LLM (Ollama) → Kroki workflow dict; normalized."""
+    from nodes.llm_call import OLLAMA_MODELS
+
+    default_ollama_model = OLLAMA_MODELS[0] if OLLAMA_MODELS else "llama3.2"
+    wf = {
+        "lastNodeId": 4,
+        "lastLinkId": 4,
+        "nodes": [
+            {
+                "id": 1,
+                "type": "LLMPromptEngine",
+                "pos": [100, 100],
+                "size": [400, 320],
+                "flags": {},
+                "order": 0,
+                "mode": 0,
+                "inputs": [],
+                "outputs": [
+                    {"name": "prompt", "type": "STRING", "links": [1], "slot_index": 0, "shape": 3},
+                    {
+                        "name": "positive",
+                        "type": "STRING",
+                        "links": None,
+                        "slot_index": 1,
+                        "shape": 3,
+                    },
+                    {
+                        "name": "negative",
+                        "type": "STRING",
+                        "links": [2],
+                        "slot_index": 2,
+                        "shape": 3,
+                    },
+                ],
+                "properties": {"Node name for S/R": "LLMPromptEngine"},
+                "widgets_values": [
+                    "Generate a Mermaid diagram that illustrates: {{description}}",
+                    "Kroki – Creates diagrams from textual descriptions!",
+                    "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
+                    "Do not add any text outside the diagram syntax.",
+                    "kroki.txt",
+                    "mermaid",
+                    "svg",
+                ],
+            },
+            {
+                "id": 2,
+                "type": "LLMCall",
+                "pos": [560, 100],
+                "size": [320, 200],
+                "flags": {},
+                "order": 1,
+                "mode": 0,
+                "inputs": [
+                    {"name": "prompt", "type": "STRING", "link": 1},
+                    {"name": "negative_prompt", "type": "STRING", "link": 2},
+                ],
+                "outputs": [
+                    {"name": "text", "type": "STRING", "links": [3], "slot_index": 0, "shape": 3},
+                ],
+                "properties": {"Node name for S/R": "LLMCall"},
+                "widgets_values": ["", "ollama", default_ollama_model, "", "", ""],
+            },
+            {
+                "id": 3,
+                "type": "UMLDiagram",
+                "pos": [560, 360],
+                "size": [400, 300],
+                "flags": {},
+                "order": 2,
+                "mode": 0,
+                "inputs": [{"name": "code_input", "type": "*", "link": 3}],
+                "outputs": [
+                    {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
+                    {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+                    {
+                        "name": "kroki_url",
+                        "type": "STRING",
+                        "links": [4],
+                        "slot_index": 2,
+                        "shape": 3,
+                    },
+                    {
+                        "name": "content_for_viewer",
+                        "type": "STRING",
+                        "links": None,
+                        "slot_index": 3,
+                        "shape": 3,
+                    },
+                ],
+                "properties": {"Node name for S/R": "UMLDiagram"},
+                "widgets_values": [0, "https://kroki.io", 11, "", 1],
+            },
+            {
+                "id": 4,
+                "type": "UMLViewerURL",
+                "pos": [560, 700],
+                "size": [280, 80],
+                "flags": {},
+                "order": 3,
+                "mode": 0,
+                "inputs": [{"name": "kroki_url", "type": "STRING", "link": 4}],
+                "outputs": [
+                    {
+                        "name": "viewer_url",
+                        "type": "STRING",
+                        "links": None,
+                        "slot_index": 0,
+                        "shape": 3,
+                    },
+                ],
+                "properties": {"Node name for S/R": "UMLViewerURL"},
+                "widgets_values": [],
+            },
+        ],
+        "links": [
+            {
+                "id": 1,
+                "origin_id": 1,
+                "origin_slot": 0,
+                "target_id": 2,
+                "target_slot": 0,
+                "type": "STRING",
+            },
+            {
+                "id": 2,
+                "origin_id": 1,
+                "origin_slot": 2,
+                "target_id": 2,
+                "target_slot": 3,
+                "type": "STRING",
+            },
+            {
+                "id": 3,
+                "origin_id": 2,
+                "origin_slot": 0,
+                "target_id": 3,
+                "target_slot": 4,
+                "type": "STRING",
+            },
+            {
+                "id": 4,
+                "origin_id": 3,
+                "origin_slot": 2,
+                "target_id": 4,
+                "target_slot": 0,
+                "type": "STRING",
+            },
+        ],
+        "groups": [
+            {"title": "LLM (Ollama) → Kroki", "bound": [80, 80, 900, 820], "nodes": [1, 2, 3, 4]},
+        ],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    }
+    return normalize(wf)
 
 
 def run_generate_and_normalize() -> int:
@@ -435,6 +633,8 @@ def run_generate_and_normalize() -> int:
     run_generate()
     workflows_dir = root / "workflows"
     example_dir = root / "example_workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    example_dir.mkdir(parents=True, exist_ok=True)
     to_normalize: list[Path] = []
     if workflows_dir.is_dir():
         to_normalize.extend(sorted(workflows_dir.glob("*.json")))
@@ -442,6 +642,7 @@ def run_generate_and_normalize() -> int:
         to_normalize.extend(sorted(example_dir.glob("*.json")))
     if not to_normalize:
         return 0
+
     # Build a minimal namespace for run_normalize (in-place, no -o)
     class Args:
         input = [str(p) for p in to_normalize]
@@ -456,6 +657,46 @@ def run_generate_and_normalize() -> int:
     return run_normalize(args)
 
 
+def _run_in_place_normalize() -> int:
+    """Normalize workflows/*.json and example_workflows/*.json in place. Return 0."""
+    workflows_dir = root / "workflows"
+    example_dir = root / "example_workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    example_dir.mkdir(parents=True, exist_ok=True)
+    to_normalize: list[Path] = []
+    if workflows_dir.is_dir():
+        to_normalize.extend(sorted(workflows_dir.glob("*.json")))
+    if example_dir.is_dir():
+        to_normalize.extend(sorted(example_dir.glob("*.json")))
+    if not to_normalize:
+        return 0
+
+    class Args:
+        input = [str(p) for p in to_normalize]
+        output = None
+        indent = 2
+        _parser = None
+
+    args = Args()
+    _parser = argparse.ArgumentParser()
+    _parser.error = lambda msg: sys.exit(2)
+    args._parser = _parser
+    return run_normalize(args)
+
+
+def run_full_pipeline() -> int:
+    """Generate, normalize, add viewer to all workflows, normalize again, then check formats sync."""
+    run_generate()
+    _run_in_place_normalize()
+    import add_viewer_to_workflows  # noqa: E402
+
+    add_viewer_to_workflows.main()
+    _run_in_place_normalize()
+    import check_formats_sync  # noqa: E402
+
+    return check_formats_sync.main()
+
+
 # -----------------------------------------------------------------------------
 # CLI
 # -----------------------------------------------------------------------------
@@ -465,7 +706,9 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(description="Generate workflow JSON and optionally normalize.")
     subparsers = parser.add_subparsers(dest="command", help="command")
-    subparsers.add_parser("generate", help="Generate workflows then normalize workflows/* and example_workflows/*")
+    subparsers.add_parser(
+        "generate", help="Generate workflows then normalize workflows/* and example_workflows/*"
+    )
     norm_parser = subparsers.add_parser("normalize", help="Only normalize given workflow JSON")
     norm_parser.set_defaults(_parser=norm_parser)
     norm_parser.add_argument(
@@ -475,14 +718,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Input JSON file(s); '-' for stdin. Omit to normalize workflows/ and example_workflows/ in place.",
     )
     norm_parser.add_argument("-o", "--output", default=None, help="Output file or directory")
-    norm_parser.add_argument("--indent", type=int, default=2, help="JSON indent (default 2); 0 for compact")
+    norm_parser.add_argument(
+        "--indent", type=int, default=2, help="JSON indent (default 2); 0 for compact"
+    )
     args = parser.parse_args(argv)
     if args.command == "normalize":
         return run_normalize(args)
     if args.command == "generate":
         return run_generate_and_normalize()
-    # Default: same as generate (generate then normalize)
-    return run_generate_and_normalize()
+    # Default: full pipeline (generate → normalize → add viewer → normalize → formats sync check)
+    return run_full_pipeline()
 
 
 if __name__ == "__main__":

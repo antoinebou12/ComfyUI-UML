@@ -4,6 +4,7 @@ Check that web/ComfyUI-UML.js SUPPORTED_FORMATS stays in sync with nodes/kroki_c
 Run from repo root: python scripts/check_formats_sync.py
 Exits 0 if in sync, 1 if they differ (and prints diff).
 """
+
 import re
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ JS_PATH = REPO_ROOT / "web" / "ComfyUI-UML.js"
 def get_py_formats():
     sys.path.insert(0, str(REPO_ROOT))
     from nodes.kroki_client import SUPPORTED_FORMATS
+
     return {k: list(v) for k, v in SUPPORTED_FORMATS.items()}
 
 

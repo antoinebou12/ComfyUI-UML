@@ -3,7 +3,6 @@ Kroki client for ComfyUI-UML: web API (POST/GET) and optional local renderers.
 """
 
 import base64
-import io
 import os
 import shutil
 import subprocess
@@ -15,6 +14,7 @@ from typing import Any, Optional
 # Try httpx first, fall back to requests
 try:
     import httpx
+
     _USE_HTTPX = True
 except ImportError:
     _USE_HTTPX = False
@@ -173,6 +173,7 @@ def render_web(
         else:
             try:
                 import requests
+
                 r = requests.post(
                     f"{base_url}/{diagram_type}/{output_format}",
                     json=body,
@@ -203,6 +204,7 @@ def render_web(
     else:
         try:
             import requests
+
             r = requests.post(
                 post_url,
                 data=source_bytes,
@@ -260,6 +262,7 @@ def render_local(
     if diagram_type == "graphviz" and output_format in ("png", "svg", "pdf", "jpeg"):
         try:
             import graphviz
+
             fmt = "png" if output_format == "png" else output_format
             src = graphviz.Source(diagram_source)
             return src.pipe(format=fmt)
@@ -326,7 +329,9 @@ def _render_local_mermaid(
     if result.returncode != 0:
         return None
     svg_bytes = result.stdout
-    if not svg_bytes or (not svg_bytes.lstrip().startswith(b"<?xml") and not svg_bytes.lstrip().startswith(b"<svg")):
+    if not svg_bytes or (
+        not svg_bytes.lstrip().startswith(b"<?xml") and not svg_bytes.lstrip().startswith(b"<svg")
+    ):
         return None
 
     if output_format == "svg":
@@ -335,6 +340,7 @@ def _render_local_mermaid(
     # PNG: convert SVG to PNG
     try:
         import cairosvg
+
         return cairosvg.svg2png(bytestring=svg_bytes)
     except Exception:
         return None

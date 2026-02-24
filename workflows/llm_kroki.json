@@ -1,6 +1,6 @@
 {
-  "lastNodeId": 3,
-  "lastLinkId": 3,
+  "lastNodeId": 4,
+  "lastLinkId": 4,
   "nodes": [
     {
       "id": 1,
@@ -49,7 +49,7 @@
       },
       "widgets_values": [
         "Generate a Mermaid diagram that illustrates: {{description}}",
-        "Kroki – Creates diagrams from textual descriptions!",
+        "Kroki \u2013 Creates diagrams from textual descriptions!",
         "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
         "Do not add any text outside the diagram syntax.",
         "kroki.txt",
@@ -144,7 +144,9 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "links": null,
+          "links": [
+            4
+          ],
           "slot_index": 2,
           "shape": 3
         },
@@ -166,6 +168,41 @@
         "",
         1
       ]
+    },
+    {
+      "id": 4,
+      "type": "UMLViewerURL",
+      "pos": [
+        560,
+        700
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "viewer_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLViewerURL"
+      },
+      "widgets_values": []
     }
   ],
   "links": [
@@ -192,21 +229,30 @@
       "target_id": 3,
       "target_slot": 4,
       "type": "STRING"
+    },
+    {
+      "id": 4,
+      "origin_id": 3,
+      "origin_slot": 2,
+      "target_id": 4,
+      "target_slot": 0,
+      "type": "STRING"
     }
   ],
   "groups": [
     {
-      "title": "LLM → Kroki",
+      "title": "LLM \u2192 Kroki",
       "bound": [
         80,
         80,
         900,
-        620
+        820
       ],
       "nodes": [
         1,
         2,
-        3
+        3,
+        4
       ]
     }
   ],

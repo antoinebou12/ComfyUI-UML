@@ -35,3 +35,13 @@ python scripts/generate_all_diagrams_workflow.py normalize - < broken.json > fix
 ```
 
 The script rebuilds `links` from node inputs/outputs if missing or corrupted, ensures every group has a valid `bound`, and normalizes root keys to camelCase.
+
+## Regenerating workflow files
+
+To regenerate all workflows, add UMLViewerURL nodes where missing, and verify that `web/ComfyUI-UML.js` SUPPORTED_FORMATS matches `nodes/kroki_client.py`, run (from repo root):
+
+```bash
+python scripts/generate_all_diagrams_workflow.py
+```
+
+This runs: generate → normalize → add viewer → normalize → formats sync check. It exits with code 1 if the format lists are out of sync. Use `python scripts/generate_all_diagrams_workflow.py generate` to only generate and normalize (no add-viewer, no sync check).

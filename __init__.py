@@ -4,6 +4,7 @@ ComFyUML — ComfyUI UML: custom nodes for generating diagrams via Kroki.
 
 try:
     from comfy_env import install
+
     install()
 except Exception:
     pass
@@ -21,6 +22,7 @@ from nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 # Generate visibility mappings for comfy-dynamic-widgets (optional)
 try:
     from comfy_dynamic_widgets import write_mappings
+
     _web_js = os.path.join(os.path.dirname(__file__), "web", "js")
     os.makedirs(_web_js, exist_ok=True)
     write_mappings(NODE_CLASS_MAPPINGS, __file__)
@@ -33,6 +35,7 @@ WEB_DIRECTORY = "./web"
 # Register API route for viewer "Save to ComfyUI" (writes to output/uml/)
 try:
     from nodes.uml_routes import register_routes
+
     register_routes()
 except Exception:
     pass
