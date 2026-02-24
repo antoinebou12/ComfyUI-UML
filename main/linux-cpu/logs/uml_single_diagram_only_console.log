@@ -1,0 +1,16 @@
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-log] [DynamicWidgets] Loading extension...
+[Console-log] [DynamicWidgets] Extension registered
+[Console-warning] [MaskEditor] ComfyApp.open_maskeditor is deprecated. Plugins should migrate to using the command system or direct node context menu integration.
+[Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[Console-log] [ComfyUI-UML] Workflow normalizer installed
+[Console-log] [ComfyUI-UML] graphToPrompt normalizer installed
+[Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+[Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+[Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+[Console-log] [comfy-test] graphToPrompt: 1 nodes, missing class_type: [], sample: {"inputs":{"backend":"web","kroki_url":"https://kroki.io","diagram_type":"blockdiag","code":"blockdiag {\n  blockdiag -> generates -> \"block-diagrams\";\n  blockdiag -> is -> \"very easy!\";\n\n  blockdiag [color = \"greenyellow\"];\n  \"block-diagrams\" [color = \"pink\"];\n  \"very easy!\" [color

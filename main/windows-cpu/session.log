@@ -1,0 +1,62 @@
+[00:00] Crash dump logging enabled: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-0710\windows-cpu\crash_dump.log
+[00:00] 
+[00:00] [1/3] REGISTRATION
+[00:00] ----------------------------------------
+[00:00] [DEBUG] server=None, server_url=http://127.0.0.1:8188, api=None
+[00:00] 
+Connecting to existing server at http://127.0.0.1:8188...
+[00:00] Connecting to existing server at http://127.0.0.1:8188...
+[00:00] Connected to server! (attempt 1, 0.0s)
+[00:00] Checking for import errors in server logs...
+[00:00] No import errors detected
+[00:00] Found 641 registered nodes
+[00:00] [REGISTRATION] PASSED
+[00:00] 
+[00:00] [2/3] INSTANTIATION
+[00:00] ----------------------------------------
+[00:00] [DEBUG] server=<comfy_test.comfyui.server.ExternalComfyUIServer object at 0x000001CE693706E0>, server_url=http://127.0.0.1:8188, api=<comfy_test.comfyui.api.ComfyUIAPI object at 0x000001CE69370830>
+[00:00] Testing node constructors...
+[00:03] All 3 node(s) instantiated successfully!
+[00:03] [INSTANTIATION] PASSED
+[00:03] 
+[00:03] [3/3] EXECUTION
+[00:03] ----------------------------------------
+[00:03] [DEBUG] server=<comfy_test.comfyui.server.ExternalComfyUIServer object at 0x000001CE693706E0>, server_url=http://127.0.0.1:8188, api=<comfy_test.comfyui.api.ComfyUIAPI object at 0x000001CE69370830>
+[00:03] CPU runner - will execute 1 workflow(s)
+[00:03] Running 5 workflow(s) (all with videos)...
+[00:04] Starting headless browser...
+[00:04]   Downloading Mesa llvmpipe for Windows...
+[00:08]   Copied opengl32.dll to Chromium dir
+[00:08]   Copied libgallium_wgl.dll to Chromium dir
+[00:08]   Using Mesa llvmpipe (desktop GL) — multithreaded CPU rendering
+[00:09]   [1/5] SKIPPED (not in cpu list) uml_llm_ollama.json
+[00:09]   [2/5] SKIPPED (not in cpu list) uml_mermaid.json
+[00:09]   [3/5] SKIPPED (not in cpu list) uml_plantuml.json
+[00:09] Capturing execution frames: uml_single_diagram_only.json
+[00:10]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:10]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:10]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:10]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:10]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:11]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:11]   [Console-warning] [MaskEditor] ComfyApp.open_maskeditor is deprecated. Plugins should migrate to using the command system or direct node context menu integration.
+[00:11]   [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[00:15]   [Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+[00:15]   [Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+[00:15]   [Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+[00:18]   Frame 1 saved (frame_000.jpg, t=0.0s)
+[00:18]   Validating workflow...
+[00:18]   Queuing workflow for execution...
+[00:20]   Execution complete (t=1.7s)
+[00:20]   Captured 1 unique frames over 1.67s
+[00:20]   [debug] iframes: 1
+[00:20]   [debug]   iframe[0]: src=, canvas=0x0, rafFrozen=False
+[00:20]   [timing] trigger_3d_previews: 0.0s
+[00:22]   Saved high-quality screenshot: uml_single_diagram_only_executed.png
+[00:22]   [timing] final_screenshot: 0.7s
+[00:23]   [5/5] SKIPPED (not in cpu list) uml_single_node.json
+[00:23] Results saved to D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-0710\windows-cpu\results.json
+[00:23] Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-0710\windows-cpu\index.html
+[00:23] [EXECUTION] PASSED
+[00:23] 
+windows: PASSED

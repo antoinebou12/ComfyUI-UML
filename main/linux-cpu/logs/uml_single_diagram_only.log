@@ -1,0 +1,23 @@
+Capturing execution frames: uml_single_diagram_only.json
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-warning] [MaskEditor] ComfyApp.open_maskeditor is deprecated. Plugins should migrate to using the command system or direct node context menu integration.
+  [Console-error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+  [Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+  [Console-warning] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
+  Frame 1 saved (frame_000.jpg, t=0.0s)
+  Validating workflow...
+  Queuing workflow for execution...
+  Execution complete (t=1.6s)
+  Captured 1 unique frames over 1.59s
+  [debug] iframes: 1
+  [debug]   iframe[0]: src=, canvas=0x0, rafFrozen=False
+  [timing] trigger_3d_previews: 0.0s
+  Saved high-quality screenshot: uml_single_diagram_only_executed.png
+  [timing] final_screenshot: 0.7s
+    Captured 2 video frames
