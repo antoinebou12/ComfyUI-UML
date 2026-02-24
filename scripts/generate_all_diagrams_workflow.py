@@ -735,8 +735,72 @@ def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
 
 
 def _build_uml_single_node_workflow() -> dict:
-    """Build uml_single_node.json: blockdiag SVG, blockdiag PNG, plantuml TXT, each with a viewer.
-    Tests viewer with URL, SVG, PNG, and TXT formats."""
+    """Build uml_single_node.json: one UMLDiagram (blockdiag SVG) + one UMLViewerURL, one link.
+    Minimal workflow for CI; avoids graphToPrompt link validation issues with multiple links."""
+    blockdiag_idx = DIAGRAM_TYPES.index("blockdiag")
+    blockdiag_code = get_default_code("blockdiag")
+    fmt_idx = format_string_to_widget_index("blockdiag", "svg")
+
+    outputs_template = [
+        {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+    ]
+    outputs = [dict(o) for o in outputs_template]
+    outputs[2]["links"] = [1]
+
+    nodes = [
+        {
+            "id": 1,
+            "type": "UMLDiagram",
+            "class_type": "UMLDiagram",
+            "pos": [100, 100],
+            "size": [400, 300],
+            "flags": {},
+            "order": 0,
+            "mode": 0,
+            "outputs": outputs,
+            "properties": {"Node name for S/R": "UMLDiagram"},
+            "widgets_values": [0, "https://kroki.io", blockdiag_idx, blockdiag_code, fmt_idx],
+            "inputs": [],
+        },
+        {
+            "id": 2,
+            "type": "UMLViewerURL",
+            "class_type": "UMLViewerURL",
+            "pos": [100, 420],
+            "size": [280, 80],
+            "flags": {},
+            "order": 1,
+            "mode": 0,
+            "outputs": [
+                {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+            ],
+            "properties": {"Node name for S/R": "UMLViewerURL"},
+            "widgets_values": [],
+            "inputs": [{"name": "kroki_url", "type": "STRING", "link": 1}],
+        },
+    ]
+    links = [
+        {"id": 1, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 0, "type": "STRING"},
+    ]
+
+    return normalize({
+        "lastNodeId": 2,
+        "lastLinkId": 1,
+        "nodes": nodes,
+        "links": links,
+        "groups": [],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    })
+
+
+def _build_uml_single_node_multi_workflow() -> dict:
+    """Build uml_single_node_multi.json: blockdiag SVG, blockdiag PNG, plantuml TXT, each with a viewer.
+    Tests viewer with URL, SVG, PNG, and TXT formats. Not used in CI cpu list (multi-link validation issues)."""
     blockdiag_idx = DIAGRAM_TYPES.index("blockdiag")
     plantuml_idx = DIAGRAM_TYPES.index("plantuml")
     blockdiag_code = get_default_code("blockdiag")
@@ -1022,6 +1086,10 @@ def run_generate() -> int:
     uml_single_node_wf = _build_uml_single_node_workflow()
     _write_workflow_json(workflows_dir / "uml_single_node.json", uml_single_node_wf)
     logger.info("Wrote %s", workflows_dir / "uml_single_node.json")
+
+    uml_single_node_multi_wf = _build_uml_single_node_multi_workflow()
+    _write_workflow_json(workflows_dir / "uml_single_node_multi.json", uml_single_node_multi_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_single_node_multi.json")
 
     groups = [
         {
