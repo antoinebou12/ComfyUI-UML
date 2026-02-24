@@ -32,7 +32,8 @@ jobs:
       - name: Publish Custom Node
         id: publish
         run: |
-          out=$(comfy --skip-prompt --no-enable-telemetry env 2>&1; comfy node publish --token "$REGISTRY_ACCESS_TOKEN" 2>&1)
+          set +e
+          out=$(comfy node publish --token "$REGISTRY_ACCESS_TOKEN" 2>&1)
           code=$?
           echo "$out"
           if [ $code -ne 0 ] && echo "$out" | grep -q "already exists"; then

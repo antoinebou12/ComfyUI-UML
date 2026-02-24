@@ -1,6 +1,6 @@
 {
-  "lastNodeId": 2,
-  "lastLinkId": 1,
+  "lastNodeId": 1,
+  "lastLinkId": 0,
   "nodes": [
     {
       "id": 1,
@@ -34,9 +34,7 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "links": [
-            1
-          ],
+          "links": null,
           "slot_index": 2,
           "shape": 3
         },
@@ -58,53 +56,9 @@
         "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->John: Hello John, how are you?\n    loop Healthcheck\n        John->John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->Alice: Great!\n    John->Bob: How about you?\n    Bob-->John: Jolly good!",
         0
       ]
-    },
-    {
-      "id": 2,
-      "type": "UMLViewerURL",
-      "pos": [
-        100,
-        420
-      ],
-      "size": [
-        280,
-        80
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "kroki_url",
-          "type": "STRING",
-          "link": 1
-        }
-      ],
-      "outputs": [
-        {
-          "name": "viewer_url",
-          "type": "STRING",
-          "links": null,
-          "slot_index": 0,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S/R": "UMLViewerURL"
-      },
-      "widgets_values": []
     }
   ],
-  "links": [
-    {
-      "id": 1,
-      "origin_id": 1,
-      "origin_slot": 2,
-      "target_id": 2,
-      "target_slot": 0,
-      "type": "STRING"
-    }
-  ],
+  "links": [],
   "groups": [],
   "config": {},
   "extra": {},
