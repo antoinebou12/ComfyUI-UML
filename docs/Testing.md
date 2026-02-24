@@ -31,8 +31,10 @@ Validation failed: graphToPrompt produced nodes without class_type: graphToPromp
 
 **Cause:** comfy-test validates the graph by calling ComfyUI's in-browser `graphToPrompt()` after loading the workflow. That conversion sometimes emits a node without a `class_type` field (e.g. `inputs` as `{"UNKNOWN":0}`). The **input** workflow JSON from this repo is valid (every node has `class_type`); the failure is in the **produced** API-format graph from the frontend.
 
-**What to do:**
+**In-repo fix:** The ComfyUI-UML extension patches `app.graphToPrompt` so that its return value is normalized: every node in the prompt gets `class_type` set (from the current graph node, or `_meta`, or type) when missing. This runs in the same extension as the workflow load normalizer (`ComfyUI-UML.workflowNormalizer`). After loading the extension, comfy-test’s validation should see valid nodes. If you still see the error, ensure the ComfyUI-UML frontend script is loaded (check for `[ComfyUI-UML] graphToPrompt normalizer installed` in the browser console when opening ComfyUI).
+
+**If failures persist:**
 
 - Ensure the workflow under **workflows/** has valid nodes with `class_type` (e.g. use `scripts/generate_all_diagrams_workflow.py normalize`).
-- If failures persist, this is likely a ComfyUI frontend or comfy-test interaction issue. Consider reporting to [comfy-test issues](https://github.com/PozzettiAndrea/comfy-test/issues) with the error message and sample, and optionally to [ComfyUI](https://github.com/Comfy-Org/ComfyUI) (e.g. issues around "node missing class_type" such as #5409).
-- If you find a ComfyUI or comfy-test version where this validation passes, document it here as a known-good combination.
+- This may be a ComfyUI frontend or comfy-test interaction issue. Consider reporting to [comfy-test issues](https://github.com/PozzettiAndrea/comfy-test/issues) with the error message and sample, and optionally to [ComfyUI](https://github.com/Comfy-Org/ComfyUI) (e.g. issues around "node missing class_type" such as #5409).
+- If you find a ComfyUI or comfy-test version where this validation passes without the patch, document it here as a known-good combination.

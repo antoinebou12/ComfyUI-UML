@@ -582,5 +582,69 @@ app.registerExtension({
   name: "ComfyUI-UML.workflowNormalizer",
   setup() {
     _installWorkflowNormalizer();
+    _installGraphToPromptNormalizer();
   },
 });
+
+/** Ensure every node in graphToPrompt output has class_type so comfy-test validation passes. */
+function _normalizePromptNodes(promptObj) {
+  if (!promptObj || typeof promptObj !== "object") return;
+  const g = app.graph;
+  const getTypeFromGraph = (id) => {
+    if (!g || typeof g.getNodeById !== "function") return null;
+    const n = g.getNodeById(Number(id)) || g.getNodeById(id);
+    return (n && (n.type || n.comfyClass)) || null;
+  };
+  const ensureNodeClassType = (node, id) => {
+    if (!node || typeof node !== "object") return;
+    if (node.class_type != null && node.class_type !== "") return;
+    const type =
+      getTypeFromGraph(id) ||
+      node.type ||
+      node._meta?.class_type ||
+      node._meta?.type ||
+      node._meta?.comfyClass;
+    if (type != null) node.class_type = type;
+  };
+
+  if (Array.isArray(promptObj)) {
+    promptObj.forEach((node, i) => ensureNodeClassType(node, String(i)));
+    return;
+  }
+  for (const [id, node] of Object.entries(promptObj)) {
+    if (node && typeof node === "object" && (node.inputs !== undefined || node._meta !== undefined))
+      ensureNodeClassType(node, id);
+  }
+}
+
+function _installGraphToPromptNormalizer() {
+  const tryInstall = () => {
+    const original = app.graphToPrompt;
+    if (typeof original !== "function") return false;
+    if (original.__umlPromptPatched) return true;
+    const wrapped = function (...args) {
+      const result = original.apply(this, args);
+      const patch = (value) => {
+        if (!value || typeof value !== "object") return value;
+        _normalizePromptNodes(value);
+        if (value.nodes != null) _normalizePromptNodes(value.nodes);
+        if (value.graph && value.graph.nodes != null) _normalizePromptNodes(value.graph.nodes);
+        return value;
+      };
+      if (result && typeof result.then === "function") return result.then(patch);
+      return patch(result);
+    };
+    wrapped.__umlPromptPatched = true;
+    app.graphToPrompt = wrapped;
+    console.log("[ComfyUI-UML] graphToPrompt normalizer installed");
+    return true;
+  };
+
+  if (!tryInstall()) {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      if (tryInstall() || attempts > 50) clearInterval(interval);
+    }, 100);
+  }
+}
