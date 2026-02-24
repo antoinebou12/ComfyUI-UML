@@ -6,7 +6,7 @@ try:
     from comfy_env import install
 
     install()
-except Exception:
+except ImportError:
     pass
 
 import os

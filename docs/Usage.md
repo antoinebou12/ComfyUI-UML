@@ -19,9 +19,18 @@
 ## Opening the diagram in the viewer
 
 1. **From the node**: Right-click the UML node → **Open in viewer** (uses current diagram code).
-2. **Diagram Viewer URL node** (category UML): Add **Diagram Viewer URL** to your workflow and connect **kroki_url** (or **content_for_viewer**) from the UML Render node. It outputs **viewer_url** — the full viewer page path (e.g. `/extensions/ComfyUI-UML/viewer.html?url=...`) to open or pass to other nodes. Used in **workflows/uml_quickstart.json** and **workflows/llm_kroki.json**.
+2. **Diagram Viewer URL node** (category UML): Add **Diagram Viewer URL** to your workflow and connect **kroki_url** (or **content_for_viewer**) from the UML Render node. It outputs **viewer_url** (full page) and **viewer_url_iframe** (minimal UI for iframe embedding). Both point to the same viewer page: **viewer_url** uses `viewer.html?url=...` and **viewer_url_iframe** uses `viewer.html?embed=1&url=...`. Used in **workflows/uml_quickstart.json** and **workflows/llm_kroki.json**.
 3. **Manual URL**: Copy **kroki_url** and open `http://localhost:8188/extensions/ComfyUI-UML/viewer.html?url=<paste_kroki_url>`. Data URLs supported: `?url=data:image/svg+xml;base64,...`.
 4. **Toolbar**: zoom (Fit, 100%, ±), **Save locally**, **Save to ComfyUI**, Copy link.
+
+## Embedding in an iframe
+
+For embedding the diagram viewer inside an iframe (e.g. ComfyUI_Viewer or a custom node that displays a URL), use the **embed mode** of the same viewer so the iframe stays lightweight and sandbox-friendly:
+
+- **URL**: `/extensions/ComfyUI-UML/viewer.html?embed=1&url=<kroki_url_or_data_url>`
+- **From the node**: Connect the Diagram Viewer URL node’s **viewer_url_iframe** output to your iframe’s `src`.
+
+The embed viewer shows the diagram with fit-to-view on load, wheel zoom, a single Fit button, and pan; it does not include Save to ComfyUI, crop, or copy actions.
 
 ## LLM + Prompt Engine workflow
 

@@ -4,13 +4,15 @@ Single pipeline for workflow generation, normalization, viewer injection, and fo
 Default (no subcommand): full pipeline — generate workflows, normalize, add viewer to
 non-CPU workflows, normalize again, then check that web/ComfyUI-UML.js SUPPORTED_FORMATS
 matches nodes/kroki_client.py. All workflow JSON is written with indent=2 and trailing
-newline. Exits 1 if formats are out of sync.
+newline. Exits 1 if formats are out of sync. The generate step also produces
+uml_viewer_formats_test.json for testing the diagram viewer with multiple output formats
+(URL, PNG, SVG, PDF, TXT).
 
   python scripts/generate_all_diagrams_workflow.py
 
 Subcommands:
   generate   — Generate workflows and normalize workflows/*.json (no add-viewer, no sync check).
-  generate-cpu — Write diagram-only workflows/uml_<type>_cpu.json for comfy-test.
+  sync-formats — Update web/ComfyUI-UML.js SUPPORTED_FORMATS from nodes/kroki_client.py only.
   normalize  — Only normalize given workflow JSON. Omit input to normalize workflows/ in place.
                Examples: normalize workflow.json -o fixed.json; normalize - (stdin → stdout).
 """
@@ -528,14 +530,12 @@ def _add_viewer_to_workflow(data: dict) -> bool:
 
 
 def _run_add_viewer_to_workflows() -> int:
-    """Add UMLViewerURL to workflows that have UMLDiagram but not yet UMLViewerURL. Skip *_cpu.json."""
+    """Add UMLViewerURL to workflows that have UMLDiagram but not yet UMLViewerURL."""
     workflows_dir = root / "workflows"
     changed = 0
     if not workflows_dir.is_dir():
         return 0
     for path in sorted(workflows_dir.glob("*.json")):
-        if path.name.endswith("_cpu.json"):
-            continue
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -611,6 +611,43 @@ def _check_formats_sync() -> int:
     return 1
 
 
+def _sync_js_supported_formats() -> int:
+    """Update web/ComfyUI-UML.js SUPPORTED_FORMATS from nodes/kroki_client.py. Return 0 on success."""
+    from nodes.kroki_client import SUPPORTED_FORMATS  # noqa: E402
+
+    lines = []
+    for key in sorted(SUPPORTED_FORMATS.keys()):
+        formats = SUPPORTED_FORMATS[key]
+        fmt_str = ", ".join(f'"{f}"' for f in formats)
+        lines.append(f"  {key}: [{fmt_str}],")
+    inner = "\n" + "\n".join(lines)
+
+    if not JS_PATH.exists():
+        logger.error("JS file not found: %s", JS_PATH)
+        return 1
+    text = JS_PATH.read_text(encoding="utf-8")
+    start_marker = "const SUPPORTED_FORMATS = {"
+    start = text.find(start_marker)
+    if start == -1:
+        logger.error("Could not find SUPPORTED_FORMATS in web/ComfyUI-UML.js")
+        return 1
+    block_start = text.index("{", start) + 1
+    depth = 1
+    i = block_start
+    while i < len(text) and depth:
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+        i += 1
+    block_end = i - 1
+    new_text = text[:block_start] + inner + text[block_end:]
+    JS_PATH.write_text(new_text, encoding="utf-8")
+    logger.info("Updated SUPPORTED_FORMATS in %s", JS_PATH)
+    return 0
+
+
+
 # -----------------------------------------------------------------------------
 # Generate workflows
 # -----------------------------------------------------------------------------
@@ -629,6 +666,21 @@ def _load_kroki_and_default_code() -> None:
     get_default_code = _default_code.get_default_code
 
 
+# Placeholder returned when a diagram type has no nodes/defaults/<type>.txt; must match default_code._PLACEHOLDER
+_DEFAULT_PLACEHOLDER = "// Enter your diagram source here"
+
+
+def _validate_default_code_coverage() -> int:
+    """Ensure every DIAGRAM_TYPES entry has a default code file. Return 0 if all present, 1 if any missing."""
+    missing = [t for t in DIAGRAM_TYPES if get_default_code(t) == _DEFAULT_PLACEHOLDER]
+    if not missing:
+        return 0
+    for t in missing:
+        logger.warning("Missing default code for diagram type %s: add nodes/defaults/%s.txt", t, t)
+    logger.error("Default code missing for %d diagram type(s); add nodes/defaults/<type>.txt", len(missing))
+    return 1
+
+
 def format_index(diagram_type: str) -> int:
     allowed = SUPPORTED_FORMATS.get(diagram_type, ["png"])
     for i, fmt in enumerate(FORMAT_ORDER):
@@ -637,6 +689,15 @@ def format_index(diagram_type: str) -> int:
     return 0
 
 
+def format_string_to_widget_index(diagram_type: str, format_str: str) -> int:
+    """Return the FORMAT_ORDER index for the given format if allowed for diagram_type, else first allowed."""
+    allowed = SUPPORTED_FORMATS.get(diagram_type, ["png"])
+    fmt = (format_str or "").strip().lower()
+    if fmt in allowed:
+        for i, f in enumerate(FORMAT_ORDER):
+            if f == fmt:
+                return i
+    return format_index(diagram_type)
 def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
     """Build a workflow with one UMLDiagram node for the given diagram type (no viewer, no links)."""
     code = get_default_code(diagram_type)
@@ -673,8 +734,257 @@ def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
     }
 
 
+def _build_uml_single_node_workflow() -> dict:
+    """Build uml_single_node.json: blockdiag SVG, blockdiag PNG, plantuml TXT, each with a viewer.
+    Tests viewer with URL, SVG, PNG, and TXT formats."""
+    blockdiag_idx = DIAGRAM_TYPES.index("blockdiag")
+    plantuml_idx = DIAGRAM_TYPES.index("plantuml")
+    blockdiag_code = get_default_code("blockdiag")
+    plantuml_code = get_default_code("plantuml")
+
+    outputs_template = [
+        {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+    ]
+
+    nodes = []
+    links = []
+    # Three columns: blockdiag SVG, blockdiag PNG, plantuml TXT
+    configs = [
+        (blockdiag_idx, blockdiag_code, format_string_to_widget_index("blockdiag", "svg"), 100),
+        (blockdiag_idx, blockdiag_code, format_string_to_widget_index("blockdiag", "png"), 540),
+        (plantuml_idx, plantuml_code, format_string_to_widget_index("plantuml", "txt"), 980),
+    ]
+    for i, (dtype_idx, code, fmt_idx, x) in enumerate(configs):
+        link_id = i + 1
+        diagram_id = i + 1
+        viewer_id = i + 4
+        outputs = [dict(o) for o in outputs_template]
+        outputs[2]["links"] = [link_id]
+        nodes.append({
+            "id": diagram_id,
+            "type": "UMLDiagram",
+            "class_type": "UMLDiagram",
+            "pos": [x, 100],
+            "size": [400, 300],
+            "flags": {},
+            "order": i,
+            "mode": 0,
+            "outputs": outputs,
+            "properties": {"Node name for S/R": "UMLDiagram"},
+            "widgets_values": [0, "https://kroki.io", dtype_idx, code, fmt_idx],
+            "inputs": [],
+        })
+        nodes.append({
+            "id": viewer_id,
+            "type": "UMLViewerURL",
+            "class_type": "UMLViewerURL",
+            "pos": [x, 420],
+            "size": [280, 80],
+            "flags": {},
+            "order": 3 + i,
+            "mode": 0,
+            "outputs": [
+                {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+            ],
+            "properties": {"Node name for S/R": "UMLViewerURL"},
+            "widgets_values": [],
+            "inputs": [{"name": "kroki_url", "type": "STRING", "link": link_id}],
+        })
+        links.append({
+            "id": link_id,
+            "origin_id": diagram_id,
+            "origin_slot": 2,
+            "target_id": viewer_id,
+            "target_slot": 0,
+            "type": "STRING",
+        })
+
+    return normalize({
+        "lastNodeId": 6,
+        "lastLinkId": 3,
+        "nodes": nodes,
+        "links": links,
+        "groups": [],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    })
+
+
+def build_single_node_workflow_api(diagram_type: str, type_index: int) -> dict:
+    """Build API/prompt format workflow (nodes as object keyed by id) for comfy-test.
+    Avoids UI→API conversion that can drop class_type. Single UMLDiagram node, no links.
+    """
+    code = get_default_code(diagram_type)
+    fmt_idx = format_index(diagram_type)
+    format_str = FORMAT_ORDER[fmt_idx] if fmt_idx < len(FORMAT_ORDER) else "svg"
+    inputs = {
+        "backend": "web",
+        "kroki_url": "https://kroki.io",
+        "diagram_type": diagram_type,
+        "code": code,
+        "output_format": format_str,
+    }
+    return {
+        "1": {
+            "class_type": "UMLDiagram",
+            "inputs": inputs,
+        }
+    }
+
+
+def _build_viewer_formats_test_workflow() -> dict:
+    """Build a workflow that tests the viewer with multiple output formats (URL, PNG, SVG, PDF, TXT).
+    Four UMLDiagram nodes (blockdiag png/svg/pdf, plantuml txt) each connected to a UMLViewerURL.
+    """
+    blockdiag_idx = DIAGRAM_TYPES.index("blockdiag")
+    plantuml_idx = DIAGRAM_TYPES.index("plantuml")
+    blockdiag_code = get_default_code("blockdiag")
+    plantuml_code = get_default_code("plantuml")
+
+    outputs_template = [
+        {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+    ]
+
+    nodes = []
+    links = []
+    base_y = 100
+    row_height = 420
+
+    # Blockdiag: png, svg, pdf (diagram ids 1–3, viewer ids 5–7, link ids 1–3)
+    for i, fmt in enumerate(["png", "svg", "pdf"]):
+        link_id = i + 1
+        diagram_id = i + 1
+        viewer_id = i + 5
+        outputs = [dict(o) for o in outputs_template]
+        outputs[2]["links"] = [link_id]
+        nodes.append({
+            "id": diagram_id,
+            "type": "UMLDiagram",
+            "class_type": "UMLDiagram",
+            "pos": [100, base_y + i * row_height],
+            "size": [400, 300],
+            "flags": {},
+            "order": i,
+            "mode": 0,
+            "outputs": outputs,
+            "properties": {"Node name for S/R": "UMLDiagram"},
+            "widgets_values": [
+                0,
+                "https://kroki.io",
+                blockdiag_idx,
+                blockdiag_code,
+                format_string_to_widget_index("blockdiag", fmt),
+            ],
+            "inputs": [],
+        })
+        nodes.append({
+            "id": viewer_id,
+            "type": "UMLViewerURL",
+            "class_type": "UMLViewerURL",
+            "pos": [100, base_y + i * row_height + 320],
+            "size": [280, 80],
+            "flags": {},
+            "order": 3 + i,
+            "mode": 0,
+            "outputs": [
+                {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+            ],
+            "properties": {"Node name for S/R": "UMLViewerURL"},
+            "widgets_values": [],
+            "inputs": [{"name": "kroki_url", "type": "STRING", "link": link_id}],
+        })
+        links.append({
+            "id": link_id,
+            "origin_id": diagram_id,
+            "origin_slot": 2,
+            "target_id": viewer_id,
+            "target_slot": 0,
+            "type": "STRING",
+        })
+
+    # Plantuml: txt (diagram id 4, viewer id 8, link id 4)
+    i = 3
+    link_id = 4
+    diagram_id = 4
+    viewer_id = 8
+    outputs = [dict(o) for o in outputs_template]
+    outputs[2]["links"] = [link_id]
+    nodes.append({
+        "id": diagram_id,
+        "type": "UMLDiagram",
+        "class_type": "UMLDiagram",
+        "pos": [100, base_y + i * row_height],
+        "size": [400, 300],
+        "flags": {},
+        "order": i,
+        "mode": 0,
+        "outputs": outputs,
+        "properties": {"Node name for S/R": "UMLDiagram"},
+        "widgets_values": [
+            0,
+            "https://kroki.io",
+            plantuml_idx,
+            plantuml_code,
+            format_string_to_widget_index("plantuml", "txt"),
+        ],
+        "inputs": [],
+    })
+    nodes.append({
+        "id": viewer_id,
+        "type": "UMLViewerURL",
+        "class_type": "UMLViewerURL",
+        "pos": [100, base_y + i * row_height + 320],
+        "size": [280, 80],
+        "flags": {},
+        "order": 6,
+        "mode": 0,
+        "outputs": [
+            {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+        ],
+        "properties": {"Node name for S/R": "UMLViewerURL"},
+        "widgets_values": [],
+        "inputs": [{"name": "kroki_url", "type": "STRING", "link": link_id}],
+    })
+    links.append({
+        "id": link_id,
+        "origin_id": diagram_id,
+        "origin_slot": 2,
+        "target_id": viewer_id,
+        "target_slot": 0,
+        "type": "STRING",
+    })
+
+    wf = {
+        "lastNodeId": 8,
+        "lastLinkId": 4,
+        "nodes": nodes,
+        "links": links,
+        "groups": [
+            {
+                "title": "Viewer formats test (URL, PNG, SVG, PDF, TXT)",
+                "bound": [80, 80, 400, 1800],
+                "nodes": [1, 2, 3, 4, 5, 6, 7, 8],
+            }
+        ],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    }
+    return normalize(wf)
+
+
 def run_generate() -> int:
+    _sync_js_supported_formats()
     _load_kroki_and_default_code()
+    if _validate_default_code_coverage() != 0:
+        return 1
     workflows_dir = root / "workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
     outputs = [
@@ -707,6 +1017,12 @@ def run_generate() -> int:
         out_per = workflows_dir / f"uml_{dtype}.json"
         _write_workflow_json(out_per, per_type)
         logger.info("Wrote %s", out_per)
+
+    # Single-node multi-format test: blockdiag SVG/PNG, plantuml TXT, each with viewer (URL, svg, png, txt)
+    uml_single_node_wf = _build_uml_single_node_workflow()
+    _write_workflow_json(workflows_dir / "uml_single_node.json", uml_single_node_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_single_node.json")
+
     groups = [
         {
             "title": "UML (PlantUML, Mermaid, GraphViz, D2, ERD, Nomnoml, UMLet)",
@@ -735,27 +1051,17 @@ def run_generate() -> int:
     _write_workflow_json(out_all, wf)
     logger.info("Wrote %s", out_all)
 
+    # Viewer formats test: multiple output formats (URL, PNG, SVG, PDF, TXT) for the diagram viewer
+    viewer_formats_wf = _build_viewer_formats_test_workflow()
+    out_viewer_formats = workflows_dir / "uml_viewer_formats_test.json"
+    _write_workflow_json(out_viewer_formats, viewer_formats_wf)
+    logger.info("Wrote %s", out_viewer_formats)
+
     # Write LLM Ollama workflow to workflows/
     llm_ollama = _build_llm_ollama_workflow()
     out_ollama = workflows_dir / "llm_ollama.json"
     _write_workflow_json(out_ollama, llm_ollama)
     logger.info("Wrote %s", out_ollama)
-    logger.info("Wrote %s", out_ollama)
-    return 0
-
-
-def run_generate_cpu() -> int:
-    """Write diagram-only workflows (single UMLDiagram node, no viewer) for comfy-test CPU execution.
-    Writes workflows/uml_<type>_cpu.json for each diagram type so graphToPrompt validation passes.
-    """
-    _load_kroki_and_default_code()
-    workflows_dir = root / "workflows"
-    workflows_dir.mkdir(parents=True, exist_ok=True)
-    for i, dtype in enumerate(DIAGRAM_TYPES):
-        per_type = normalize(build_single_node_workflow(dtype, i))
-        out_path = workflows_dir / f"uml_{dtype}_cpu.json"
-        _write_workflow_json(out_path, per_type)
-        logger.info("Wrote %s", out_path)
     return 0
 
 
@@ -988,10 +1294,6 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser(
         "generate", help="Generate workflows then normalize workflows/*"
     )
-    subparsers.add_parser(
-        "generate-cpu",
-        help="Write diagram-only workflows workflows/uml_<type>_cpu.json for comfy-test CPU execution",
-    )
     norm_parser = subparsers.add_parser("normalize", help="Only normalize given workflow JSON")
     norm_parser.set_defaults(_parser=norm_parser)
     norm_parser.add_argument(
@@ -1004,13 +1306,17 @@ def main(argv: list[str] | None = None) -> int:
     norm_parser.add_argument(
         "--indent", type=int, default=2, help="JSON indent (default 2); 0 for compact"
     )
+    subparsers.add_parser(
+        "sync-formats",
+        help="Update web/ComfyUI-UML.js SUPPORTED_FORMATS from nodes/kroki_client.py only",
+    )
     args = parser.parse_args(argv)
     if args.command == "normalize":
         return run_normalize(args)
     if args.command == "generate":
         return run_generate_and_normalize()
-    if args.command == "generate-cpu":
-        return run_generate_cpu()
+    if args.command == "sync-formats":
+        return _sync_js_supported_formats()
     # Default: full pipeline (generate → normalize → add viewer → normalize → formats sync check)
     return run_full_pipeline()
 

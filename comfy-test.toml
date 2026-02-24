@@ -5,38 +5,9 @@ publish = true
 
 [test.workflows]
 timeout = 300
-# Only non-LLM tests: Kroki + base64 URL SVG rendering (single UMLDiagram node). No UMLViewerURL, no LLMPromptEngine, no LLMCall.
-# LLM workflows (e.g. llm_kroki.json, llm_ollama.json) are not in the suite. graphToPrompt validation passes.
-# Generate with: python scripts/generate_all_diagrams_workflow.py generate-cpu
+# Single minimal workflow: UMLDiagram + UMLViewerURL, no groups. Easy to test.
 cpu = [
-  "uml_actdiag_cpu.json",
-  "uml_blockdiag_cpu.json",
-  "uml_bpmn_cpu.json",
-  "uml_bytefield_cpu.json",
-  "uml_c4plantuml_cpu.json",
-  "uml_d2_cpu.json",
-  "uml_dbml_cpu.json",
-  "uml_ditaa_cpu.json",
-  "uml_erd_cpu.json",
-  "uml_excalidraw_cpu.json",
-  "uml_graphviz_cpu.json",
-  "uml_mermaid_cpu.json",
-  "uml_nomnoml_cpu.json",
-  "uml_nwdiag_cpu.json",
-  "uml_packetdiag_cpu.json",
-  "uml_pikchr_cpu.json",
-  "uml_plantuml_cpu.json",
-  "uml_rackdiag_cpu.json",
-  "uml_seqdiag_cpu.json",
-  "uml_structurizr_cpu.json",
-  "uml_svgbob_cpu.json",
-  "uml_symbolator_cpu.json",
-  "uml_tikz_cpu.json",
-  "uml_umlet_cpu.json",
-  "uml_vega_cpu.json",
-  "uml_vegalite_cpu.json",
-  "uml_wavedrom_cpu.json",
-  "uml_wireviz_cpu.json",
+  "uml_single_node.json",
 ]
 
 [test.platforms]

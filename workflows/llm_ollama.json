@@ -17,7 +17,6 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "inputs": [],
       "outputs": [
         {
           "name": "prompt",
@@ -56,7 +55,8 @@
         "kroki.txt",
         "mermaid",
         "svg"
-      ]
+      ],
+      "inputs": []
     },
     {
       "id": 2,
@@ -73,18 +73,6 @@
       "flags": {},
       "order": 1,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "prompt",
-          "type": "STRING",
-          "link": 1
-        },
-        {
-          "name": "negative_prompt",
-          "type": "STRING",
-          "link": 2
-        }
-      ],
       "outputs": [
         {
           "name": "text",
@@ -106,6 +94,18 @@
         "",
         "",
         ""
+      ],
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 1
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "link": 2
+        }
       ]
     },
     {
@@ -123,13 +123,6 @@
       "flags": {},
       "order": 2,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "code_input",
-          "type": "*",
-          "link": 3
-        }
-      ],
       "outputs": [
         {
           "name": "IMAGE",
@@ -171,6 +164,13 @@
         11,
         "",
         1
+      ],
+      "inputs": [
+        {
+          "name": "code_input",
+          "type": "*",
+          "link": 3
+        }
       ]
     },
     {
@@ -188,13 +188,6 @@
       "flags": {},
       "order": 3,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "kroki_url",
-          "type": "STRING",
-          "link": 4
-        }
-      ],
       "outputs": [
         {
           "name": "viewer_url",
@@ -207,7 +200,14 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "inputs": [
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "link": 4
+        }
+      ]
     }
   ],
   "links": [

@@ -9,23 +9,13 @@ CI runs [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to
 The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
 - **[test]** — `levels`: test levels from `syntax` through `install`, `registration`, `instantiation`, `execution`. `publish = true` enables publish checks.
-- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. ComfyUI-UML uses diagram-only workflows (`uml_<type>_cpu.json`) so graphToPrompt validation passes; regenerate with `python scripts/generate_all_diagrams_workflow.py generate-cpu`.
+- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. ComfyUI-UML uses a single minimal workflow (`uml_single_node.json`) for execution tests.
 - The suite runs only diagram-only workflows (Kroki/base64 URL rendering). LLM workflows are not included.
 - **[test.platforms]** — which OSes to run on (linux, macos, windows, windows_portable).
 
 ## Adding workflows to the test suite
 
-1. For **CPU execution tests**, use diagram-only workflows (`workflows/uml_<type>_cpu.json`). Regenerate the full set with:
-
-   ```bash
-   python scripts/generate_all_diagrams_workflow.py generate-cpu
-   ```
-
-   The `cpu` list in **comfy-test.toml** and **pyproject.toml** should reference these `*_cpu.json` filenames so comfy-test validation (graphToPrompt) passes.
-
-2. To add a new diagram type to the CPU tests: after adding the type in `nodes/kroki_client.py`, run `generate-cpu` again (it writes one `uml_<type>_cpu.json` per type), then add the new filename to the `cpu` array in both config files.
-
-3. For reference, to add any other workflow to the suite: put the JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**.
+1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The default suite uses **uml_single_node.json** (minimal UMLDiagram + UMLViewerURL, no groups).
 
 ## Running comfy-test locally
 
@@ -43,6 +33,6 @@ Validation failed: graphToPrompt produced nodes without class_type: graphToPromp
 
 **What to do:**
 
-- Regenerate CPU workflows so they match the generator: `python scripts/generate_all_diagrams_workflow.py generate-cpu`.
+- Ensure the workflow under **workflows/** has valid nodes with `class_type` (e.g. use `scripts/generate_all_diagrams_workflow.py normalize`).
 - If failures persist, this is likely a ComfyUI frontend or comfy-test interaction issue. Consider reporting to [comfy-test issues](https://github.com/PozzettiAndrea/comfy-test/issues) with the error message and sample, and optionally to [ComfyUI](https://github.com/Comfy-Org/ComfyUI) (e.g. issues around "node missing class_type" such as #5409).
 - If you find a ComfyUI or comfy-test version where this validation passes, document it here as a known-good combination.

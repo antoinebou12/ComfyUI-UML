@@ -4,7 +4,7 @@
  */
 import { app } from "../../scripts/app.js";
 
-/** Must stay in sync with nodes/kroki_client.py SUPPORTED_FORMATS (diagram type -> allowed output formats). */
+/** Generated from nodes/kroki_client.py SUPPORTED_FORMATS; do not edit by hand. Run scripts/generate_all_diagrams_workflow.py to update. */
 const SUPPORTED_FORMATS = {
   actdiag: ["png", "svg", "pdf"],
   blockdiag: ["png", "svg", "pdf"],
@@ -33,8 +33,7 @@ const SUPPORTED_FORMATS = {
   vega: ["png", "svg", "pdf"],
   vegalite: ["png", "svg", "pdf"],
   wavedrom: ["svg"],
-  wireviz: ["png", "svg"],
-};
+  wireviz: ["png", "svg"],};
 
 function getViewerBaseUrl() {
   const base = new URL(document.baseURI || window.location.href);
@@ -142,7 +141,9 @@ app.registerExtension({
         callback: () => {
           buildKrokiUrlFromNode(node).then((krokiUrl) => {
             const base = getViewerBaseUrl();
-            const target = krokiUrl ? base + "?url=" + encodeURIComponent(krokiUrl) : base;
+            const outputFormat = (getWidgetValue(node, "output_format") || "svg").toString().toLowerCase().trim();
+            let target = krokiUrl ? base + "?url=" + encodeURIComponent(krokiUrl) : base;
+            if (krokiUrl) target += "&format=" + encodeURIComponent(outputFormat);
             window.open(target, "_blank", "noopener");
           });
         },
@@ -357,10 +358,14 @@ function _ensureGroupBounds(groups, nodes) {
 
   for (const group of groups || []) {
     if (!group || typeof group !== "object") continue;
-    const bound = group.bound;
+    const bound = group.bound ?? group.bounding;
     if (Array.isArray(bound) && bound.length >= 4) {
       const nums = bound.slice(0, 4).map((v) => Number(v));
-      if (nums.every(Number.isFinite)) continue;
+      if (nums.every(Number.isFinite)) {
+        group.bound = bound;
+        group.bounding = group.bound;
+        continue;
+      }
     }
     const nodeIds = Array.isArray(group.nodes) ? group.nodes : [];
     const rects = [];
@@ -372,6 +377,7 @@ function _ensureGroupBounds(groups, nodes) {
     }
     if (rects.length === 0) {
       group.bound = [0, 0, 400, 300];
+      group.bounding = group.bound;
       continue;
     }
     const minX = Math.min(...rects.map((r) => r[0]));
@@ -385,23 +391,53 @@ function _ensureGroupBounds(groups, nodes) {
       maxX - minX + 2 * padding,
       maxY - minY + 2 * padding,
     ];
+    group.bounding = group.bound;
   }
 }
 
-/** Ensure every group has a valid bound (array of 4 numbers). Removes null/non-object entries. */
+/** Ensure every group has a valid bound (array of 4 numbers). Removes null/non-object entries. Sets both bound and bounding for frontend compatibility. */
 function _sanitizeGroups(groups) {
   if (!Array.isArray(groups)) return [];
   const out = [];
   const defaultBound = [0, 0, 400, 300];
   for (const g of groups) {
     if (g == null || typeof g !== "object") continue;
-    const b = g.bound;
+    const b = g.bound ?? g.bounding;
     const valid =
       Array.isArray(b) &&
       b.length >= 4 &&
       b.slice(0, 4).every((v) => Number.isFinite(Number(v)));
-    if (!valid) g.bound = defaultBound.slice();
+    if (!valid) {
+      g.bound = defaultBound.slice();
+      g.bounding = g.bound;
+    } else {
+      g.bound = b;
+      g.bounding = g.bound;
+    }
     out.push(g);
+  }
+  return out;
+}
+
+/** Returns a safe copy of groups for LiteGraph: only title, nodes, bound, bounding; bound/bounding are new arrays of 4 numbers. */
+function _safeGroupsCopy(groups) {
+  if (!Array.isArray(groups)) return [];
+  const defaultBound = [0, 0, 400, 300];
+  const out = [];
+  for (const g of groups) {
+    if (g == null || typeof g !== "object") continue;
+    const b = g.bound ?? g.bounding;
+    const valid =
+      Array.isArray(b) &&
+      b.length >= 4 &&
+      b.slice(0, 4).every((v) => Number.isFinite(Number(v)));
+    const arr = valid ? b.slice(0, 4).map((v) => Number(v)) : defaultBound.slice();
+    out.push({
+      title: g.title != null ? String(g.title) : "",
+      nodes: Array.isArray(g.nodes) ? g.nodes.slice() : [],
+      bound: arr.slice(),
+      bounding: arr.slice(),
+    });
   }
   return out;
 }
@@ -439,6 +475,9 @@ function _normalizeWorkflowData(raw) {
     if (node && typeof node === "object") {
       if (node.inputs == null) node.inputs = [];
       if (node.outputs == null) node.outputs = [];
+      if (node.type != null && (node.class_type == null || node.class_type === undefined)) {
+        node.class_type = node.type;
+      }
     }
   }
 
@@ -447,6 +486,10 @@ function _normalizeWorkflowData(raw) {
     data.links = _rebuildLinks(nodes);
   } else if (data.links == null) {
     data.links = [];
+  } else {
+    data.links = data.links.filter(
+      (l) => l && typeof l === "object" && !(l.origin_id == null && l.target_id == null)
+    );
   }
 
   let lastLink = data.lastLinkId != null ? data.lastLinkId : data.last_link_id;
@@ -493,10 +536,10 @@ function _installWorkflowNormalizer() {
         console.warn("[ComfyUI-UML] Workflow normalize failed:", e);
       }
       try {
-        const payload =
-          normalized.groups && normalized.groups.length > 0
-            ? { ...normalized, groups: [] }
-            : normalized;
+        const payload = {
+          ...normalized,
+          groups: _safeGroupsCopy(normalized.groups || []),
+        };
         return await original.call(this, payload, ...rest);
       } catch (e) {
         if (

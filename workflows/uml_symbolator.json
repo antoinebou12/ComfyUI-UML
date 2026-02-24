@@ -1,6 +1,6 @@
 {
-  "lastNodeId": 2,
-  "lastLinkId": 1,
+  "lastNodeId": 1,
+  "lastLinkId": 0,
   "nodes": [
     {
       "id": 1,
@@ -35,9 +35,7 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "links": [
-            1
-          ],
+          "links": null,
           "slot_index": 2,
           "shape": 3
         },
@@ -56,58 +54,13 @@
         0,
         "https://kroki.io",
         21,
-        "",
+        "module demo_device #(\n    //# {{}}\n    parameter SIZE = 8,\n    parameter RESET_ACTIVE_LEVEL = 1\n) (\n    //# {{clocks|Clocking}}\n    input wire clock,\n    //# {{control|Control signals}}\n    input wire reset,\n    input wire enable,\n    //# {{data|Data ports}}\n    input wire [SIZE-1:0] data_in,\n    output wire [SIZE-1:0] data_out\n);\n  // ...\nendmodule",
         1
       ],
       "inputs": []
-    },
-    {
-      "id": 2,
-      "type": "UMLViewerURL",
-      "class_type": "UMLViewerURL",
-      "pos": [
-        100,
-        420
-      ],
-      "size": [
-        280,
-        80
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "kroki_url",
-          "type": "STRING",
-          "link": 1
-        }
-      ],
-      "outputs": [
-        {
-          "name": "viewer_url",
-          "type": "STRING",
-          "links": null,
-          "slot_index": 0,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S/R": "UMLViewerURL"
-      },
-      "widgets_values": []
     }
   ],
-  "links": [
-    {
-      "id": 1,
-      "origin_id": 1,
-      "origin_slot": 2,
-      "target_id": 2,
-      "target_slot": 0,
-      "type": "STRING"
-    }
-  ],
+  "links": [],
   "groups": [],
   "config": {},
   "extra": {},

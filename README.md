@@ -32,7 +32,7 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - **28 Kroki diagram types** and **output formats** (png, svg, jpeg, pdf, txt, base64) per type; validated against [Kroki's support matrix](https://docs.kroki.io/kroki/diagram-types).
 - **Diagram options**: Optional JSON for quality/theme (e.g. GraphViz scale, Mermaid/PlantUML/D2 theme). See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
 - **Shareable Kroki URL** and **built-in viewer** (zoom, Save to ComfyUI, copy link).
-- **ComfyUI_Viewer**: Connect **content_for_viewer** for SVG in iframe; other formats use saved path.
+- **ComfyUI_Viewer**: Connect **content_for_viewer** for SVG in iframe; other formats use saved path. For **iframe embedding of a Kroki URL**, use the viewer in embed mode: `viewer.html?embed=1&url=...` or the Diagram Viewer URL node’s **viewer_url_iframe** output.
 - **Local Mermaid**: Backend "local" + [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for offline SVG/PNG; optional theme.
 - **Local Graphviz**: Optional when the `graphviz` Python package is installed.
 

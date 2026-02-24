@@ -30,8 +30,8 @@ class UMLViewerURL:
 
     CATEGORY = "UML"
     SEARCH_ALIASES = ["uml", "viewer", "kroki", "diagram", "open viewer"]
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("viewer_url",)
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("viewer_url", "viewer_url_iframe")
     FUNCTION = "run"
     OUTPUT_NODE = False
 
@@ -51,6 +51,19 @@ class UMLViewerURL:
         url = _normalize_url(kroki_url) or _normalize_url(content_for_viewer)
         if not url:
             viewer_url = VIEWER_PATH
+            viewer_url_iframe = VIEWER_PATH + "?embed=1"
         else:
-            viewer_url = VIEWER_PATH + "?url=" + quote(url, safe="")
-        return (viewer_url,)
+            # Infer format from URL so the viewer loads only the needed view module (svg, png, or txt)
+            url_lower = url.lower()
+            if "image/svg+xml" in url_lower or "/svg/" in url_lower:
+                format_param = "svg"
+            elif "/png/" in url_lower or "/jpeg/" in url_lower:
+                format_param = "png"
+            elif "/txt/" in url_lower:
+                format_param = "txt"
+            else:
+                format_param = "svg"  # default for data URLs or unknown paths
+            q = "url=" + quote(url, safe="") + "&format=" + format_param
+            viewer_url = VIEWER_PATH + "?" + q
+            viewer_url_iframe = VIEWER_PATH + "?embed=1&" + q
+        return (viewer_url, viewer_url_iframe)

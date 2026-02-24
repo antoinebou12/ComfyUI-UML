@@ -1,6 +1,6 @@
 {
-  "lastNodeId": 5,
-  "lastLinkId": 1,
+  "lastNodeId": 8,
+  "lastLinkId": 4,
   "nodes": [
     {
       "id": 1,
@@ -55,19 +55,55 @@
       "widgets_values": [
         0,
         "https://kroki.io",
-        11,
-        "sequenceDiagram\n    participant Alice\n    participant Bob\n    participant John\n    Alice->>John: Hello John, how are you?\n    loop Healthcheck\n        John->>John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->>Alice: Great!\n    John->>Bob: How about you?\n    Bob-->>John: Jolly good!",
+        1,
+        "blockdiag {\n  blockdiag -> generates -> \"block-diagrams\";\n  blockdiag -> is -> \"very easy!\";\n\n  blockdiag [color = \"greenyellow\"];\n  \"block-diagrams\" [color = \"pink\"];\n  \"very easy!\" [color = \"orange\"];\n}",
         0
       ],
       "inputs": []
+    },
+    {
+      "id": 5,
+      "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
+      "pos": [
+        100,
+        420
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "viewer_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLViewerURL"
+      },
+      "widgets_values": [],
+      "inputs": [
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "link": 1
+        }
+      ]
     },
     {
       "id": 2,
       "type": "UMLDiagram",
       "class_type": "UMLDiagram",
       "pos": [
-        520,
-        100
+        100,
+        520
       ],
       "size": [
         400,
@@ -94,7 +130,9 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "links": null,
+          "links": [
+            2
+          ],
           "slot_index": 2,
           "shape": 3
         },
@@ -112,11 +150,47 @@
       "widgets_values": [
         0,
         "https://kroki.io",
-        16,
-        "@startuml\nleft to right direction\nskinparam packageStyle rectangle\nskinparam monochrome true\nactor customer\nactor clerk\nrectangle checkout {\n  customer -- (checkout)\n  (checkout) .> (payment) : include\n  (help) .> (checkout) : extends\n  (checkout) -- clerk\n}\n@enduml",
-        0
+        1,
+        "blockdiag {\n  blockdiag -> generates -> \"block-diagrams\";\n  blockdiag -> is -> \"very easy!\";\n\n  blockdiag [color = \"greenyellow\"];\n  \"block-diagrams\" [color = \"pink\"];\n  \"very easy!\" [color = \"orange\"];\n}",
+        1
       ],
       "inputs": []
+    },
+    {
+      "id": 6,
+      "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
+      "pos": [
+        100,
+        840
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "viewer_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLViewerURL"
+      },
+      "widgets_values": [],
+      "inputs": [
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "link": 2
+        }
+      ]
     },
     {
       "id": 3,
@@ -124,7 +198,7 @@
       "class_type": "UMLDiagram",
       "pos": [
         100,
-        420
+        940
       ],
       "size": [
         400,
@@ -151,7 +225,9 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "links": null,
+          "links": [
+            3
+          ],
           "slot_index": 2,
           "shape": 3
         },
@@ -169,19 +245,55 @@
       "widgets_values": [
         0,
         "https://kroki.io",
-        10,
-        "digraph G { A -> B; }",
-        0
+        1,
+        "blockdiag {\n  blockdiag -> generates -> \"block-diagrams\";\n  blockdiag -> is -> \"very easy!\";\n\n  blockdiag [color = \"greenyellow\"];\n  \"block-diagrams\" [color = \"pink\"];\n  \"very easy!\" [color = \"orange\"];\n}",
+        3
       ],
       "inputs": []
+    },
+    {
+      "id": 7,
+      "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
+      "pos": [
+        100,
+        1260
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "viewer_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLViewerURL"
+      },
+      "widgets_values": [],
+      "inputs": [
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "link": 3
+        }
+      ]
     },
     {
       "id": 4,
       "type": "UMLDiagram",
       "class_type": "UMLDiagram",
       "pos": [
-        520,
-        420
+        100,
+        1360
       ],
       "size": [
         400,
@@ -208,7 +320,9 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "links": null,
+          "links": [
+            4
+          ],
           "slot_index": 2,
           "shape": 3
         },
@@ -226,34 +340,27 @@
       "widgets_values": [
         0,
         "https://kroki.io",
-        5,
-        "x -> y: label",
-        0
+        16,
+        "@startuml\nleft to right direction\nskinparam packageStyle rectangle\nskinparam monochrome true\nactor customer\nactor clerk\nrectangle checkout {\n  customer -- (checkout)\n  (checkout) .> (payment) : include\n  (help) .> (checkout) : extends\n  (checkout) -- clerk\n}\n@enduml",
+        4
       ],
       "inputs": []
     },
     {
-      "id": 5,
+      "id": 8,
       "type": "UMLViewerURL",
       "class_type": "UMLViewerURL",
       "pos": [
-        540,
-        220
+        100,
+        1680
       ],
       "size": [
         280,
         80
       ],
       "flags": {},
-      "order": 4,
+      "order": 6,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "kroki_url",
-          "type": "STRING",
-          "link": 1
-        }
-      ],
       "outputs": [
         {
           "name": "viewer_url",
@@ -266,7 +373,14 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "inputs": [
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "link": 4
+        }
+      ]
     }
   ],
   "links": [
@@ -277,9 +391,53 @@
       "target_id": 5,
       "target_slot": 0,
       "type": "STRING"
+    },
+    {
+      "id": 2,
+      "origin_id": 2,
+      "origin_slot": 2,
+      "target_id": 6,
+      "target_slot": 0,
+      "type": "STRING"
+    },
+    {
+      "id": 3,
+      "origin_id": 3,
+      "origin_slot": 2,
+      "target_id": 7,
+      "target_slot": 0,
+      "type": "STRING"
+    },
+    {
+      "id": 4,
+      "origin_id": 4,
+      "origin_slot": 2,
+      "target_id": 8,
+      "target_slot": 0,
+      "type": "STRING"
     }
   ],
-  "groups": [],
+  "groups": [
+    {
+      "title": "Viewer formats test (URL, PNG, SVG, PDF, TXT)",
+      "bound": [
+        80,
+        80,
+        400,
+        1800
+      ],
+      "nodes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
   "config": {},
   "extra": {},
   "version": 0.4

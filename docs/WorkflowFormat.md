@@ -2,6 +2,8 @@
 
 Workflows shipped in `workflows/` use a format that ComfyUI's frontend can load and convert correctly when you **Queue Prompt**. If you load a workflow from Manager cache, a URL, or a paste and see errors like "Cannot convert undefined or null to object", **"KeyError: class_type"**, or **"SyntaxError: Unexpected non-whitespace character after JSON"** when queueing, the JSON is likely in a different or corrupted format (e.g. snake_case `last_node_id` instead of camelCase `lastNodeId`, or wrong link structure).
 
+If you still see **KeyError: class_type** after loading a workflow, ensure you are using a file from `workflows/` or one normalized with the script, and that the ComfyUI-UML custom node is installed and loaded in that ComfyUI instance.
+
 When you **Load** a workflow from a file in ComfyUI, the ComfyUI-UML extension runs an in-browser normalizer that fixes camelCase, links, and group bounds. For workflows loaded from Manager, a URL, or a paste (where that normalizer may not run), use the `scripts/generate_all_diagrams_workflow.py normalize` command below to repair the file first.
 
 ## Expected structure
