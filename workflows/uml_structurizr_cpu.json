@@ -1,0 +1,68 @@
+{
+  "lastNodeId": 1,
+  "lastLinkId": 0,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
+      "pos": [
+        100,
+        100
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1,
+          "shape": 3
+        },
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2,
+          "shape": 3
+        },
+        {
+          "name": "content_for_viewer",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 3,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLDiagram"
+      },
+      "widgets_values": [
+        0,
+        "https://kroki.io",
+        19,
+        "workspace \"Big Bank plc\" \"Example workspace.\" {\n    model {\n        customer = person \"Personal Banking Customer\" \"A customer of the bank.\" \"Customer\"\n        internetBankingSystem = softwaresystem \"Internet Banking System\" \"Allows customers to view accounts and make payments.\" {\n            webApplication = container \"Web Application\" \"Delivers the SPA.\" \"Java and Spring MVC\"\n            apiApplication = container \"API Application\" \"Provides API.\" \"Java and Spring MVC\"\n            database = container \"Database\" \"Stores data.\" \"Oracle Database Schema\"\n        }\n        customer -> webApplication \"Uses\" \"HTTPS\"\n        customer -> apiApplication \"Uses\" \"HTTPS\"\n        webApplication -> apiApplication \"Delivers\"\n        apiApplication -> database \"Reads from and writes to\" \"JDBC\"\n    }\n    views {\n        systemcontext internetBankingSystem \"SystemContext\" { include * }\n        container internetBankingSystem \"Containers\" { include * }\n    }\n}",
+        0
+      ],
+      "inputs": []
+    }
+  ],
+  "links": [],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

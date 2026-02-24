@@ -58,7 +58,8 @@
         11,
         "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->John: Hello John, how are you?\n    loop Healthcheck\n        John->John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->Alice: Great!\n    John->Bob: How about you?\n    Bob-->John: Jolly good!",
         0
-      ]
+      ],
+      "inputs": []
     },
     {
       "id": 2,

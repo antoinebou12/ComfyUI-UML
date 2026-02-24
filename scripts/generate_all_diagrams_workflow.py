@@ -24,6 +24,11 @@ Normalize only (specific files or stdin):
   python scripts/generate_all_diagrams_workflow.py normalize workflow.json -o fixed.json
   python scripts/generate_all_diagrams_workflow.py normalize -  (stdin → stdout)
   python scripts/generate_all_diagrams_workflow.py normalize workflows/*.json -o out_dir
+
+Generate diagram-only workflows for comfy-test CPU execution (no viewer, no links):
+
+  python scripts/generate_all_diagrams_workflow.py generate-cpu
+  → Writes workflows/uml_<type>_cpu.json for each diagram type; use these in comfy-test.toml cpu list.
 """
 
 from __future__ import annotations
@@ -219,6 +224,16 @@ def _node_ensure_class_type_after_type(node: dict) -> None:
     node.update(new_node)
 
 
+def _node_ensure_inputs(node: dict) -> None:
+    """Ensure node has an 'inputs' array (empty if missing) for graphToPrompt compatibility.
+    ComfyUI frontend graphToPrompt can produce nodes without class_type when graph nodes lack inputs.
+    """
+    if not node or not isinstance(node, dict):
+        return
+    if "inputs" not in node or not isinstance(node.get("inputs"), list):
+        node["inputs"] = []
+
+
 def normalize(data: dict) -> dict:
     """Return a normalized copy of the workflow (links, groups, root keys).
     Ensures every node has class_type (from type if missing) for API/graphToPrompt compatibility,
@@ -231,6 +246,7 @@ def normalize(data: dict) -> dict:
     for node in nodes:
         if node and isinstance(node, dict):
             _node_ensure_class_type_after_type(node)
+            _node_ensure_inputs(node)
     data = dict(data)
     data["nodes"] = nodes
 
@@ -387,13 +403,14 @@ def format_index(diagram_type: str) -> int:
 
 
 def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
-    """Build a workflow with one UMLDiagram node for the given diagram type."""
+    """Build a workflow with one UMLDiagram node for the given diagram type (no viewer, no links)."""
     code = get_default_code(diagram_type)
     fmt_idx = format_index(diagram_type)
     outputs = [
         {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
         {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
         {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
     ]
     node = {
         "id": 1,
@@ -493,6 +510,22 @@ def run_generate() -> int:
         with open(out_ollama, "w", encoding="utf-8") as f:
             json.dump(llm_ollama, f, indent=2)
         logger.info("Wrote %s", out_ollama)
+    return 0
+
+
+def run_generate_cpu() -> int:
+    """Write diagram-only workflows (single UMLDiagram node, no viewer) for comfy-test CPU execution.
+    Writes workflows/uml_<type>_cpu.json for each diagram type so graphToPrompt validation passes.
+    """
+    _load_kroki_and_default_code()
+    workflows_dir = root / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    for i, dtype in enumerate(DIAGRAM_TYPES):
+        per_type = normalize(build_single_node_workflow(dtype, i))
+        out_path = workflows_dir / f"uml_{dtype}_cpu.json"
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(per_type, f, indent=2)
+        logger.info("Wrote %s", out_path)
     return 0
 
 
@@ -737,6 +770,10 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser(
         "generate", help="Generate workflows then normalize workflows/* and example_workflows/*"
     )
+    subparsers.add_parser(
+        "generate-cpu",
+        help="Write diagram-only workflows workflows/uml_<type>_cpu.json for comfy-test CPU execution",
+    )
     norm_parser = subparsers.add_parser("normalize", help="Only normalize given workflow JSON")
     norm_parser.set_defaults(_parser=norm_parser)
     norm_parser.add_argument(
@@ -754,6 +791,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_normalize(args)
     if args.command == "generate":
         return run_generate_and_normalize()
+    if args.command == "generate-cpu":
+        return run_generate_cpu()
     # Default: full pipeline (generate → normalize → add viewer → normalize → formats sync check)
     return run_full_pipeline()
 

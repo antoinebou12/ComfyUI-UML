@@ -79,12 +79,13 @@ class UMLDiagram:
 
     @classmethod
     def INPUT_TYPES(cls):
+        # Kept compatible with ComfyUI's in-browser graphToPrompt (no visible_when) for comfy-test execution.
         return {
             "required": {
                 "backend": (["web", "local"], {"default": "web"}),
                 "kroki_url": (
                     "STRING",
-                    {"default": "https://kroki.io", "visible_when": {"backend": ["web"]}},
+                    {"default": "https://kroki.io"},
                 ),
                 "diagram_type": (DIAGRAM_TYPES, {"default": "mermaid"}),
                 "code": (
@@ -106,11 +107,11 @@ class UMLDiagram:
                 ),
                 "diagram_options": (
                     "STRING",
-                    {"default": "", "multiline": False, "visible_when": {"backend": ["web"]}},
+                    {"default": "", "multiline": False},
                 ),
                 "theme": (
                     "STRING",
-                    {"default": "", "multiline": False, "visible_when": {"backend": ["local"]}},
+                    {"default": "", "multiline": False},
                 ),
             },
             "hidden": {

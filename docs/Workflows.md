@@ -45,3 +45,13 @@ python scripts/generate_all_diagrams_workflow.py
 ```
 
 This runs: generate → normalize → add viewer → normalize → formats sync check. It exits with code 1 if the format lists are out of sync. Use `python scripts/generate_all_diagrams_workflow.py generate` to only generate and normalize (no add-viewer, no sync check).
+
+## CPU execution tests (comfy-test)
+
+Comfy-test runs workflow execution against a list in `comfy-test.toml` and `pyproject.toml` (`cpu`). Those tests use **diagram-only** workflows (`workflows/uml_<type>_cpu.json`): a single UMLDiagram node, no UMLViewerURL, no links. That avoids graphToPrompt validation failures (nodes missing `class_type`) in headless runs. To regenerate the CPU workflow set:
+
+```bash
+python scripts/generate_all_diagrams_workflow.py generate-cpu
+```
+
+The full workflows (with Diagram Viewer URL) in `workflows/` and `example_workflows/` stay as-is for users; only the test runner uses the `*_cpu.json` files.
