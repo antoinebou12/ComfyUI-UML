@@ -10,6 +10,7 @@ The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
 - **[test]** — `levels`: test levels from `syntax` through `install`, `registration`, `instantiation`, `execution`. `publish = true` enables publish checks.
 - **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. ComfyUI-UML uses diagram-only workflows (`uml_<type>_cpu.json`) so graphToPrompt validation passes; regenerate with `python scripts/generate_all_diagrams_workflow.py generate-cpu`.
+- The suite runs only diagram-only workflows (Kroki/base64 URL rendering). LLM workflows are not included.
 - **[test.platforms]** — which OSes to run on (linux, macos, windows, windows_portable).
 
 ## Adding workflows to the test suite

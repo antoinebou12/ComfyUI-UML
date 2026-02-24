@@ -5,6 +5,7 @@
     {
       "id": 1,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         100,
         100
@@ -58,11 +59,12 @@
         "actdiag {\n  write -> convert -> image\n\n  lane user {\n    label = \"User\"\n    write [label = \"Writing reST\"];\n    image [label = \"Get diagram IMAGE\"];\n  }\n  lane actdiag {\n    convert [label = \"Convert reST to Image\"];\n  }\n}",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 2,
       "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
       "pos": [
         100,
         420
@@ -93,8 +95,7 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": [],
-      "class_type": "UMLViewerURL"
+      "widgets_values": []
     }
   ],
   "links": [

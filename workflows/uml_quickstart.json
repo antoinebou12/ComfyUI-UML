@@ -5,6 +5,7 @@
     {
       "id": 1,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         100,
         100
@@ -58,11 +59,12 @@
         "sequenceDiagram\n    participant Alice\n    participant Bob\n    participant John\n    Alice->>John: Hello John, how are you?\n    loop Healthcheck\n        John->>John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->>Alice: Great!\n    John->>Bob: How about you?\n    Bob-->>John: Jolly good!",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 2,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         520,
         100
@@ -114,11 +116,12 @@
         "@startuml\nleft to right direction\nskinparam packageStyle rectangle\nskinparam monochrome true\nactor customer\nactor clerk\nrectangle checkout {\n  customer -- (checkout)\n  (checkout) .> (payment) : include\n  (help) .> (checkout) : extends\n  (checkout) -- clerk\n}\n@enduml",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 3,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         100,
         420
@@ -170,11 +173,12 @@
         "digraph G { A -> B; }",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 4,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         520,
         420
@@ -226,11 +230,12 @@
         "x -> y: label",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 5,
       "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
       "pos": [
         540,
         220
@@ -261,8 +266,7 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": [],
-      "class_type": "UMLViewerURL"
+      "widgets_values": []
     }
   ],
   "links": [

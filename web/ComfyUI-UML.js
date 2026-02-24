@@ -177,6 +177,92 @@ app.registerExtension({
   },
 });
 
+// LLMCall: dynamic Ollama model list and Refresh models button
+const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
+const OLLAMA_GET_MODELS_PATH = "/comfyui-uml/ollama/get_models";
+
+app.registerExtension({
+  name: "ComfyUI-UML.llmCallOllama",
+  async beforeRegisterNodeDef(nodeType, nodeData, app) {
+    if (nodeData.name !== "LLMCall") return;
+    const originalOnNodeCreated = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = async function () {
+      if (originalOnNodeCreated) {
+        originalOnNodeCreated.apply(this, arguments);
+      }
+      const urlWidget = this.widgets?.find((w) => w.name === "ollama_base_url");
+      const modelWidget = this.widgets?.find((w) => w.name === "model");
+      const providerWidget = this.widgets?.find((w) => w.name === "provider");
+      if (!urlWidget || !modelWidget) return;
+
+      const fetchModels = async (url) => {
+        const base = (url || OLLAMA_DEFAULT_URL).toString().replace(/\/$/, "");
+        const response = await fetch(OLLAMA_GET_MODELS_PATH, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: base }),
+        });
+        if (response.ok) {
+          const models = await response.json();
+          return Array.isArray(models) ? models : [];
+        }
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || response.statusText);
+      };
+
+      const refreshButtonWidget = this.addWidget("button", "Refresh models");
+
+      const updateModels = async () => {
+        if (providerWidget && providerWidget.value !== "ollama") return;
+        refreshButtonWidget.name = "Fetching...";
+        if (this.setDirtyCanvas) this.setDirtyCanvas(true);
+        const url = urlWidget.value ?? "";
+        let models = [];
+        try {
+          models = await fetchModels(url);
+        } catch (e) {
+          console.error("[ComfyUI-UML] Ollama get_models error:", e);
+          if (app.extensionManager?.toast?.add) {
+            app.extensionManager.toast.add({
+              severity: "error",
+              summary: "Ollama connection error",
+              detail: "Make sure Ollama server is running",
+              life: 5000,
+            });
+          }
+          refreshButtonWidget.name = "Refresh models";
+          if (this.setDirtyCanvas) this.setDirtyCanvas(true);
+          return;
+        }
+        const prevValue = modelWidget.value;
+        if (modelWidget.options) {
+          modelWidget.options.values = models;
+        } else {
+          modelWidget.options = { values: models };
+        }
+        if (models.includes(prevValue)) {
+          modelWidget.value = prevValue;
+        } else if (models.length > 0) {
+          modelWidget.value = models[0];
+        }
+        refreshButtonWidget.name = "Refresh models";
+        if (this.setDirtyCanvas) this.setDirtyCanvas(true);
+      };
+
+      refreshButtonWidget.callback = updateModels;
+      const origUrlCallback = urlWidget.callback;
+      urlWidget.callback = function (value, app, node) {
+        if (origUrlCallback) origUrlCallback(value, app, node);
+        updateModels();
+      };
+
+      if (providerWidget && providerWidget.value === "ollama") {
+        await updateModels();
+      }
+    };
+  },
+});
+
 function _isLinksCorrupted(links) {
   if (!Array.isArray(links)) return true;
   if (links.length === 0) return false;
@@ -407,7 +493,11 @@ function _installWorkflowNormalizer() {
         console.warn("[ComfyUI-UML] Workflow normalize failed:", e);
       }
       try {
-        return await original.call(this, normalized, ...rest);
+        const payload =
+          normalized.groups && normalized.groups.length > 0
+            ? { ...normalized, groups: [] }
+            : normalized;
+        return await original.call(this, payload, ...rest);
       } catch (e) {
         if (
           e instanceof TypeError &&

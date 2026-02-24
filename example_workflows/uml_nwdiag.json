@@ -5,6 +5,7 @@
     {
       "id": 1,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         100,
         100
@@ -58,11 +59,12 @@
         "nwdiag {\n  network dmz {\n    address = \"210.x.x.x/24\"\n\n    web01 [address = \"210.x.x.1\"];\n    web02 [address = \"210.x.x.2\"];\n  }\n  network internal {\n    address = \"172.x.x.x/24\";\n\n    web01 [address = \"172.x.x.1\"];\n    web02 [address = \"172.x.x.2\"];\n    db01;\n    db02;\n  }\n}",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 2,
       "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
       "pos": [
         100,
         420
@@ -93,8 +95,7 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": [],
-      "class_type": "UMLViewerURL"
+      "widgets_values": []
     }
   ],
   "links": [

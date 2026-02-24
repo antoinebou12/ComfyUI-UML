@@ -14,12 +14,12 @@ Generate only (no add-viewer, no sync check):
 
   python scripts/generate_all_diagrams_workflow.py generate
   → Writes workflows/uml_<type>.json and uml_all_diagrams.json, then normalizes
-    them and any example_workflows/*.json
+    them and workflows/*.json
 
 Normalize only (specific files or stdin):
 
   python scripts/generate_all_diagrams_workflow.py normalize
-  → Normalizes workflows/*.json and example_workflows/*.json in place (no input = use these folders).
+  → Normalizes workflows/*.json in place (no input = use this folder).
 
   python scripts/generate_all_diagrams_workflow.py normalize workflow.json -o fixed.json
   python scripts/generate_all_diagrams_workflow.py normalize -  (stdin → stdout)
@@ -234,6 +234,26 @@ def _node_ensure_inputs(node: dict) -> None:
         node["inputs"] = []
 
 
+def _node_order_keys_for_graph_to_prompt(node: dict) -> None:
+    """Reorder node keys so id, type, class_type appear first and inputs last.
+    Ensures serialized JSON has class_type before inputs for order-sensitive graphToPrompt readers.
+    Mutates node in place.
+    """
+    if not node or not isinstance(node, dict):
+        return
+    first_keys = ("id", "type", "class_type")
+    last_key = "inputs"
+    rest = [k for k in node if k not in first_keys and k != last_key]
+    # Stable order: id, type, class_type, then rest (preserve relative order), then inputs
+    ordered = [k for k in first_keys if k in node]
+    ordered.extend(rest)
+    if last_key in node:
+        ordered.append(last_key)
+    new_node = {k: node[k] for k in ordered}
+    node.clear()
+    node.update(new_node)
+
+
 def normalize(data: dict) -> dict:
     """Return a normalized copy of the workflow (links, groups, root keys).
     Ensures every node has class_type (from type if missing) for API/graphToPrompt compatibility,
@@ -247,6 +267,7 @@ def normalize(data: dict) -> dict:
         if node and isinstance(node, dict):
             _node_ensure_class_type_after_type(node)
             _node_ensure_inputs(node)
+            _node_order_keys_for_graph_to_prompt(node)
     data = dict(data)
     data["nodes"] = nodes
 
@@ -315,22 +336,18 @@ def run_normalize(args: argparse.Namespace) -> int:
     inputs = args.input if isinstance(args.input, list) else [args.input]
     parser = args._parser
 
-    # No input → normalize workflows/ and example_workflows/ in place
+    # No input → normalize workflows/ in place
     if not inputs:
         workflows_dir = root / "workflows"
-        example_dir = root / "example_workflows"
         workflows_dir.mkdir(parents=True, exist_ok=True)
-        example_dir.mkdir(parents=True, exist_ok=True)
         to_normalize: list[Path] = []
         if workflows_dir.is_dir():
             to_normalize.extend(sorted(workflows_dir.glob("*.json")))
-        if example_dir.is_dir():
-            to_normalize.extend(sorted(example_dir.glob("*.json")))
         if not to_normalize:
-            logger.info("No JSON files in workflows/ or example_workflows/.")
+            logger.info("No JSON files in workflows/.")
             return 0
         logger.info(
-            "Normalizing workflows/ and example_workflows/ in place (%d file(s)).",
+            "Normalizing workflows/ in place (%d file(s)).",
             len(to_normalize),
         )
         inputs = [str(p) for p in to_normalize]
@@ -424,6 +441,7 @@ def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
         "outputs": outputs,
         "properties": {"Node name for S/R": "UMLDiagram"},
         "widgets_values": [0, "https://kroki.io", type_index, code, fmt_idx],
+        "inputs": [],
     }
     return {
         "lastNodeId": 1,
@@ -501,15 +519,12 @@ def run_generate() -> int:
         json.dump(wf, f, indent=2)
     logger.info("Wrote %s", out_all)
 
-    # Write LLM Ollama workflow to workflows/ and example_workflows/
-    example_dir = root / "example_workflows"
-    example_dir.mkdir(parents=True, exist_ok=True)
+    # Write LLM Ollama workflow to workflows/
     llm_ollama = _build_llm_ollama_workflow()
-    for dest_dir in (workflows_dir, example_dir):
-        out_ollama = dest_dir / "llm_ollama.json"
-        with open(out_ollama, "w", encoding="utf-8") as f:
-            json.dump(llm_ollama, f, indent=2)
-        logger.info("Wrote %s", out_ollama)
+    out_ollama = workflows_dir / "llm_ollama.json"
+    with open(out_ollama, "w", encoding="utf-8") as f:
+        json.dump(llm_ollama, f, indent=2)
+    logger.info("Wrote %s", out_ollama)
     return 0
 
 
@@ -667,7 +682,7 @@ def _build_llm_ollama_workflow() -> dict:
                 "origin_id": 2,
                 "origin_slot": 0,
                 "target_id": 3,
-                "target_slot": 4,
+                "target_slot": 0,
                 "type": "STRING",
             },
             {
@@ -690,17 +705,13 @@ def _build_llm_ollama_workflow() -> dict:
 
 
 def run_generate_and_normalize() -> int:
-    """Generate workflows then normalize workflows/*.json and example_workflows/*.json in place."""
+    """Generate workflows then normalize workflows/*.json in place."""
     run_generate()
     workflows_dir = root / "workflows"
-    example_dir = root / "example_workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
-    example_dir.mkdir(parents=True, exist_ok=True)
     to_normalize: list[Path] = []
     if workflows_dir.is_dir():
         to_normalize.extend(sorted(workflows_dir.glob("*.json")))
-    if example_dir.is_dir():
-        to_normalize.extend(sorted(example_dir.glob("*.json")))
     if not to_normalize:
         return 0
 
@@ -719,16 +730,12 @@ def run_generate_and_normalize() -> int:
 
 
 def _run_in_place_normalize() -> int:
-    """Normalize workflows/*.json and example_workflows/*.json in place. Return 0."""
+    """Normalize workflows/*.json in place. Return 0."""
     workflows_dir = root / "workflows"
-    example_dir = root / "example_workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
-    example_dir.mkdir(parents=True, exist_ok=True)
     to_normalize: list[Path] = []
     if workflows_dir.is_dir():
         to_normalize.extend(sorted(workflows_dir.glob("*.json")))
-    if example_dir.is_dir():
-        to_normalize.extend(sorted(example_dir.glob("*.json")))
     if not to_normalize:
         return 0
 
@@ -768,7 +775,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate workflow JSON and optionally normalize.")
     subparsers = parser.add_subparsers(dest="command", help="command")
     subparsers.add_parser(
-        "generate", help="Generate workflows then normalize workflows/* and example_workflows/*"
+        "generate", help="Generate workflows then normalize workflows/*"
     )
     subparsers.add_parser(
         "generate-cpu",
@@ -780,7 +787,7 @@ def main(argv: list[str] | None = None) -> int:
         "input",
         nargs="*",
         default=[],
-        help="Input JSON file(s); '-' for stdin. Omit to normalize workflows/ and example_workflows/ in place.",
+        help="Input JSON file(s); '-' for stdin. Omit to normalize workflows/ in place.",
     )
     norm_parser.add_argument("-o", "--output", default=None, help="Output file or directory")
     norm_parser.add_argument(

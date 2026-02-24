@@ -5,6 +5,7 @@
     {
       "id": 1,
       "type": "LLMPromptEngine",
+      "class_type": "LLMPromptEngine",
       "pos": [
         100,
         100
@@ -49,18 +50,18 @@
       },
       "widgets_values": [
         "Generate a Mermaid diagram that illustrates: {{description}}",
-        "Kroki \u2013 Creates diagrams from textual descriptions!",
+        "Kroki – Creates diagrams from textual descriptions!",
         "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
         "Do not add any text outside the diagram syntax.",
         "kroki.txt",
         "mermaid",
         "svg"
-      ],
-      "class_type": "LLMPromptEngine"
+      ]
     },
     {
       "id": 2,
       "type": "LLMCall",
+      "class_type": "LLMCall",
       "pos": [
         560,
         100
@@ -105,12 +106,12 @@
         "",
         "",
         ""
-      ],
-      "class_type": "LLMCall"
+      ]
     },
     {
       "id": 3,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         560,
         360
@@ -170,12 +171,12 @@
         11,
         "",
         1
-      ],
-      "class_type": "UMLDiagram"
+      ]
     },
     {
       "id": 4,
       "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
       "pos": [
         560,
         700
@@ -206,8 +207,7 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": [],
-      "class_type": "UMLViewerURL"
+      "widgets_values": []
     }
   ],
   "links": [
@@ -232,7 +232,7 @@
       "origin_id": 2,
       "origin_slot": 0,
       "target_id": 3,
-      "target_slot": 4,
+      "target_slot": 0,
       "type": "STRING"
     },
     {
@@ -246,7 +246,7 @@
   ],
   "groups": [
     {
-      "title": "LLM (Ollama) \u2192 Kroki",
+      "title": "LLM (Ollama) → Kroki",
       "bound": [
         80,
         80,

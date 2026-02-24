@@ -1,5 +1,6 @@
 """
 Register ComfyUI-UML API route: POST /comfyui-uml/save to save diagram from viewer to output/uml/.
+Also: POST /comfyui-uml/ollama/get_models to list Ollama models at a given URL.
 """
 
 import os
@@ -12,7 +13,15 @@ except ImportError:
     PromptServer = None
     web = None
 
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
 ALLOWED_MIME = frozenset({"image/png", "image/svg+xml", "image/jpeg"})
+MIME_TO_EXT = {"image/png": "png", "image/svg+xml": "svg", "image/jpeg": "jpeg"}
+MAX_FILENAME_LEN = 200
+OLLAMA_GET_MODELS_DEFAULT_URL = "http://127.0.0.1:11434"
 MIME_TO_EXT = {"image/png": "png", "image/svg+xml": "svg", "image/jpeg": "jpeg"}
 MAX_FILENAME_LEN = 200
 
@@ -37,6 +46,43 @@ def _safe_ext(mime_type: str | None, filename: str | None) -> str:
         if ext in ("png", "svg", "jpeg", "jpg"):
             return "png" if ext == "jpg" else ext
     return "png"
+
+
+async def _ollama_get_models_handler(request):
+    if request.method != "POST":
+        return web.json_response({"error": "Method not allowed"}, status=405)
+    if httpx is None:
+        return web.json_response({"error": "httpx not available"}, status=503)
+    try:
+        data = await request.json()
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+    url = (data.get("url") or OLLAMA_GET_MODELS_DEFAULT_URL).strip().rstrip("/") or OLLAMA_GET_MODELS_DEFAULT_URL
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(f"{url}/api/tags")
+            r.raise_for_status()
+            body = r.json()
+    except httpx.HTTPStatusError as e:
+        return web.json_response(
+            {"error": f"Ollama returned {e.response.status_code}"},
+            status=502,
+        )
+    except Exception as e:
+        return web.json_response(
+            {"error": str(e)},
+            status=502,
+        )
+    models_raw = body.get("models") or []
+    models = []
+    for m in models_raw:
+        if isinstance(m, dict):
+            name = m.get("model") or m.get("name")
+            if name is not None:
+                models.append(str(name))
+        elif isinstance(m, str):
+            models.append(m)
+    return web.json_response(models)
 
 
 async def _save_diagram_handler(request):
@@ -101,5 +147,6 @@ def register_routes():
         if routes is None:
             return
         routes.post("/comfyui-uml/save")(_save_diagram_handler)
+        routes.post("/comfyui-uml/ollama/get_models")(_ollama_get_models_handler)
     except Exception:
         pass

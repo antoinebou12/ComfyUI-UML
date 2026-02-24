@@ -5,6 +5,7 @@
     {
       "id": 1,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         100,
         100
@@ -58,11 +59,12 @@
         "[Person]\n*name\nheight\nweight\n+birth_location_id\n\n[Location]\n*id\ncity\nstate\ncountry\n\nPerson *--1 Location",
         0
       ],
-      "class_type": "UMLDiagram"
+      "inputs": []
     },
     {
       "id": 2,
       "type": "UMLViewerURL",
+      "class_type": "UMLViewerURL",
       "pos": [
         100,
         420
@@ -93,8 +95,7 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": [],
-      "class_type": "UMLViewerURL"
+      "widgets_values": []
     }
   ],
   "links": [

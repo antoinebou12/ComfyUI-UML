@@ -5,7 +5,8 @@ publish = true
 
 [test.workflows]
 timeout = 300
-# Diagram-only workflows (no UMLViewerURL) for comfy-test CPU execution; graphToPrompt validation passes.
+# Only non-LLM tests: Kroki + base64 URL SVG rendering (single UMLDiagram node). No UMLViewerURL, no LLMPromptEngine, no LLMCall.
+# LLM workflows (e.g. llm_kroki.json, llm_ollama.json) are not in the suite. graphToPrompt validation passes.
 # Generate with: python scripts/generate_all_diagrams_workflow.py generate-cpu
 cpu = [
   "uml_actdiag_cpu.json",
@@ -36,12 +37,6 @@ cpu = [
   "uml_vegalite_cpu.json",
   "uml_wavedrom_cpu.json",
   "uml_wireviz_cpu.json",
-  # Example workflows (include UMLViewerURL)
-  "uml_single_node.json",
-  "uml_quickstart.json",
-  # LLM workflows (prompt engine + LLM call + diagram)
-  "llm_kroki.json",
-  "llm_ollama.json",
 ]
 
 [test.platforms]
