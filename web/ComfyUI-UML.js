@@ -589,11 +589,14 @@ app.registerExtension({
 /** Ensure every node in graphToPrompt output has class_type so comfy-test validation passes. */
 function _normalizePromptNodes(promptObj) {
   if (!promptObj || typeof promptObj !== "object") return;
-  const g = app.graph;
   const getTypeFromGraph = (id) => {
-    if (!g || typeof g.getNodeById !== "function") return null;
-    const n = g.getNodeById(Number(id)) || g.getNodeById(id);
-    return (n && (n.type || n.comfyClass)) || null;
+    const graphs = [app.canvas?.graph, app.graph].filter((g) => g && typeof g.getNodeById === "function");
+    for (const g of graphs) {
+      const n = g.getNodeById(Number(id)) || g.getNodeById(id);
+      const t = n && (n.type || n.comfyClass);
+      if (t) return t;
+    }
+    return null;
   };
   const ensureNodeClassType = (node, id) => {
     if (!node || typeof node !== "object") return;
@@ -604,11 +607,13 @@ function _normalizePromptNodes(promptObj) {
       node._meta?.class_type ||
       node._meta?.type ||
       node._meta?.comfyClass;
-    if (type != null) node.class_type = type;
+    node.class_type = type != null ? type : "Unknown";
   };
 
   if (Array.isArray(promptObj)) {
-    promptObj.forEach((node, i) => ensureNodeClassType(node, String(i)));
+    promptObj.forEach((node, i) =>
+      ensureNodeClassType(node, node && node.id != null ? String(node.id) : String(i))
+    );
     return;
   }
   for (const [id, node] of Object.entries(promptObj)) {
@@ -627,6 +632,7 @@ function _installGraphToPromptNormalizer() {
       const patch = (value) => {
         if (!value || typeof value !== "object") return value;
         _normalizePromptNodes(value);
+        if (value.output != null) _normalizePromptNodes(value.output); // comfy-test validates output[id].class_type
         if (value.nodes != null) _normalizePromptNodes(value.nodes);
         if (value.graph && value.graph.nodes != null) _normalizePromptNodes(value.graph.nodes);
         return value;
