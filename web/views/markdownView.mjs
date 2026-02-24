@@ -1,14 +1,18 @@
 /**
  * Markdown view: renders markdown string to HTML (minimal subset, no deps).
+ * Supports ```mermaid blocks (rendered by Mermaid.js) and $ / $$ math (rendered by KaTeX).
  * Used when format is "markdown". Styled with ComfyUI theme vars.
  */
-function simpleMarkdownToHtml(md) {
-  if (typeof md !== "string") return "";
-  let html = md
+function escapeHtml(s) {
+  return String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const lines = html.split("\n");
+}
+
+function simpleMarkdownToHtml(md) {
+  if (typeof md !== "string") return "";
+  const lines = md.split("\n");
   const out = [];
   let inCodeBlock = false;
   let codeBlockContent = [];
@@ -18,9 +22,17 @@ function simpleMarkdownToHtml(md) {
     const line = lines[i];
     if (line.startsWith("```")) {
       if (inCodeBlock) {
-        out.push("<pre><code" + (codeLang ? ' class="language-' + codeLang + '"' : "") + ">");
-        out.push(codeBlockContent.join("\n"));
-        out.push("</code></pre>");
+        const isMermaid = /^mermaid$/i.test(codeLang);
+        if (isMermaid) {
+          out.push("<div class=\"mermaid\">");
+          out.push(codeBlockContent.join("\n"));
+          out.push("</div>");
+        } else {
+          const escaped = escapeHtml(codeBlockContent.join("\n"));
+          out.push("<pre><code" + (codeLang ? " class=\"language-" + escapeHtml(codeLang) + "\"" : "") + ">");
+          out.push(escaped);
+          out.push("</code></pre>");
+        }
         codeBlockContent = [];
         codeLang = "";
         inCodeBlock = false;
@@ -35,7 +47,8 @@ function simpleMarkdownToHtml(md) {
       continue;
     }
 
-    let rest = line;
+    const escapedLine = escapeHtml(line);
+    let rest = escapedLine;
     if (/^#####\s/.test(rest)) {
       rest = "<h5>" + rest.slice(5).trim() + "</h5>";
     } else if (/^####\s/.test(rest)) {
@@ -58,12 +71,82 @@ function simpleMarkdownToHtml(md) {
   }
 
   if (inCodeBlock) {
-    out.push("<pre><code>");
-    out.push(codeBlockContent.join("\n"));
-    out.push("</code></pre>");
+    const isMermaid = /^mermaid$/i.test(codeLang);
+    if (isMermaid) {
+      out.push("<div class=\"mermaid\">");
+      out.push(codeBlockContent.join("\n"));
+      out.push("</div>");
+    } else {
+      out.push("<pre><code>");
+      out.push(escapeHtml(codeBlockContent.join("\n")));
+      out.push("</code></pre>");
+    }
   }
 
   return out.join("\n");
+}
+
+const MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+const KATEX_CSS = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css";
+const KATEX_AUTORENDER = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.mjs";
+
+let mermaidLoaded = null;
+let katexLoaded = null;
+
+function ensureKatexCss() {
+  const id = "comfyui-uml-katex-css";
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = KATEX_CSS;
+  link.crossOrigin = "anonymous";
+  document.head.appendChild(link);
+}
+
+async function runMermaid(wrap) {
+  const nodes = wrap.querySelectorAll(".mermaid");
+  if (!nodes.length) return;
+  try {
+    if (!mermaidLoaded) {
+      const mod = await import(/* @vite-ignore */ MERMAID_CDN);
+      const mermaid = mod.default;
+      mermaid.initialize({ theme: "dark", startOnLoad: false });
+      mermaidLoaded = mermaid;
+    }
+    await mermaidLoaded.run({ nodes });
+  } catch (e) {
+    Array.from(nodes).forEach((el) => {
+      const raw = el.textContent || "";
+      el.outerHTML =
+        "<div class=\"mermaid-error\" style=\"background:var(--comfy-button-bg,#333);padding:12px;border-radius:4px;color:var(--comfy-error,#e66);font-size:13px;white-space:pre-wrap;\">" +
+        "Mermaid error: " + escapeHtml(String(e && e.message ? e.message : e)) +
+        (raw ? "\n\nRaw:\n" + escapeHtml(raw) : "") +
+        "</div>";
+    });
+  }
+}
+
+async function runKaTeX(wrap) {
+  ensureKatexCss();
+  try {
+    if (!katexLoaded) {
+      katexLoaded = import(/* @vite-ignore */ KATEX_AUTORENDER);
+    }
+    const mod = await katexLoaded;
+    const renderMathInElement = mod.default;
+    if (typeof renderMathInElement !== "function") return;
+    renderMathInElement(wrap, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "$", right: "$", display: false },
+      ],
+      throwOnError: false,
+      ignoredClasses: ["mermaid"],
+    });
+  } catch (_) {
+    // Leave math as plain text if CDN fails
+  }
 }
 
 export function render(container, data) {
@@ -90,5 +173,9 @@ export function render(container, data) {
   layer.appendChild(wrap);
   container.innerHTML = "";
   container.appendChild(layer);
-  return Promise.resolve();
+
+  return (async () => {
+    await runMermaid(wrap);
+    await runKaTeX(wrap);
+  })();
 }
