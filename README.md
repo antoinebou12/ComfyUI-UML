@@ -1,6 +1,5 @@
 # ComfyUI-UML
 
-[![PR Gate](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/pr-gate.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/pr-gate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-comfyui--uml-blue)](https://registry.comfy.org/publishers/antoinebou12/nodes/comfyui-uml)
 [![Workflow Tests](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/workflow-tests.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/workflow-tests.yml)
@@ -15,6 +14,9 @@
 </p>
 
 ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) via [Kroki](https://kroki.io) or local renderers.
+
+<img width="2164" height="987" alt="image" src="https://github.com/user-attachments/assets/c9fc5efa-ebd5-47ea-b5ab-86ac03dd92b5" />
+
 
 ## Table of contents
 
