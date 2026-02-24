@@ -1,7 +1,9 @@
 """
 Workflow tools: generate diagram workflows and normalize ComfyUI workflow JSON.
+This script is the single entry point for both; use the "normalize" subcommand
+instead of the former scripts/normalize_workflow.py.
 
-Default and "generate": generate workflows, then always normalize workflows/*.json
+Default and "generate": generate workflows, then normalize workflows/*.json
 and example_workflows/*.json in place.
 
   python scripts/generate_all_diagrams_workflow.py
@@ -9,14 +11,21 @@ and example_workflows/*.json in place.
   → Writes workflows/uml_<type>.json and uml_all_diagrams.json, then normalizes them
     and any example_workflows/*.json
 
-Normalize only (specific files):
+Normalize only (specific files or stdin):
+
+  python scripts/generate_all_diagrams_workflow.py normalize
+  → Normalizes workflows/*.json and example_workflows/*.json in place (no input = use these folders).
+
   python scripts/generate_all_diagrams_workflow.py normalize workflow.json -o fixed.json
+  python scripts/generate_all_diagrams_workflow.py normalize -  (stdin → stdout)
   python scripts/generate_all_diagrams_workflow.py normalize workflows/*.json -o out_dir
 """
 from __future__ import annotations
 
 import argparse
 import json
+import logging
+import math
 import sys
 from pathlib import Path
 
@@ -24,13 +33,14 @@ root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(root))
 sys.path.insert(0, str(root / "scripts"))
 
+logger = logging.getLogger(__name__)
+
 # -----------------------------------------------------------------------------
 # Normalize workflow
 # -----------------------------------------------------------------------------
 
 
 def _is_links_corrupted(links: list) -> bool:
-    """True if links should be rebuilt (empty, array-style, or all-null entries)."""
     if not isinstance(links, list):
         return True
     if len(links) == 0:
@@ -38,53 +48,72 @@ def _is_links_corrupted(links: list) -> bool:
     first = links[0]
     if isinstance(first, list):
         return True
-    if isinstance(first, dict):
+    if first is not None and isinstance(first, dict):
         required = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type"}
-        for L in links:
-            if not isinstance(L, dict) or required - set(L.keys()):
+        for link in links:
+            if not link or not isinstance(link, dict):
                 return True
-            if L.get("origin_id") is None and L.get("target_id") is None:
+            if not required.issubset(link.keys()):
+                return True
+            if link.get("origin_id") is None and link.get("target_id") is None:
                 return True
         return False
     return True
 
 
-def _rebuild_links(nodes: list) -> list[dict]:
-    """Build links array from node inputs/outputs. Returns list of link objects."""
-    id_to_origin: dict[int, tuple[int, int, str]] = {}
-    id_to_target: dict[int, tuple[int, int]] = {}
+def _node_rect(node: dict) -> list[float] | None:
+    pos = node.get("pos")
+    size = node.get("size")
+    if not isinstance(pos, list) or len(pos) < 2 or not isinstance(size, list) or len(size) < 2:
+        return None
+    try:
+        x, y = float(pos[0]), float(pos[1])
+        w, h = float(size[0]), float(size[1])
+        if all(math.isfinite(v) for v in (x, y, w, h)):
+            return [x, y, w, h]
+    except (TypeError, ValueError):
+        pass
+    return None
 
-    for node in nodes:
-        if not isinstance(node, dict):
+
+def _rebuild_links(nodes: list) -> list[dict]:
+    id_to_origin: dict[int | str, tuple[int | str, int, str]] = {}
+    id_to_target: dict[int | str, tuple[int | str, int]] = {}
+
+    for node in nodes or []:
+        if not node or not isinstance(node, dict):
             continue
         nid = node.get("id")
         if nid is None:
             continue
-        for out in node.get("outputs") or []:
-            if not isinstance(out, dict):
+
+        for i, out in enumerate(node.get("outputs") or []):
+            if not out or not isinstance(out, dict):
                 continue
+            slot = out.get("slot_index") if out.get("slot_index") is not None else i
+            typ = out.get("type") or "STRING"
             links_out = out.get("links")
-            slot = out.get("slot_index", 0)
-            typ = out.get("type", "STRING")
             if isinstance(links_out, list):
                 for link_id in links_out:
                     if link_id is not None:
                         id_to_origin[link_id] = (nid, slot, typ)
             elif links_out is not None:
                 id_to_origin[links_out] = (nid, slot, typ)
-        for inp in node.get("inputs") or []:
-            if not isinstance(inp, dict):
+
+        for i, inp in enumerate(node.get("inputs") or []):
+            if not inp or not isinstance(inp, dict):
                 continue
             link_id = inp.get("link")
-            slot = inp.get("slot_index", 0)
             if link_id is not None:
+                slot = inp.get("slot_index") if inp.get("slot_index") is not None else i
                 id_to_target[link_id] = (nid, slot)
 
+    link_ids = sorted(set(id_to_origin.keys()) | set(id_to_target.keys()), key=lambda x: (type(x).__name__, x))
     links = []
-    for link_id in sorted(set(id_to_origin.keys()) | set(id_to_target.keys())):
+    for link_id in link_ids:
         orig = id_to_origin.get(link_id)
         tgt = id_to_target.get(link_id)
-        if orig is None or tgt is None:
+        if not orig or not tgt:
             continue
         links.append({
             "id": link_id,
@@ -97,91 +126,118 @@ def _rebuild_links(nodes: list) -> list[dict]:
     return links
 
 
-def _node_rect(node: dict) -> tuple[float, float, float, float] | None:
-    """(x, y, w, h) from node pos/size, or None."""
-    pos = node.get("pos")
-    size = node.get("size")
-    if not isinstance(pos, (list, tuple)) or len(pos) < 2:
-        return None
-    if not isinstance(size, (list, tuple)) or len(size) < 2:
-        return None
-    return (float(pos[0]), float(pos[1]), float(size[0]), float(size[1]))
-
-
 def _ensure_group_bounds(groups: list, nodes: list) -> None:
-    """In-place: set bound on each group if missing or invalid."""
-    node_by_id = {n["id"]: n for n in nodes if isinstance(n, dict) and n.get("id") is not None}
-    for g in groups:
-        if not isinstance(g, dict):
+    node_by_id = {}
+    for n in nodes or []:
+        if n and isinstance(n, dict) and n.get("id") is not None:
+            node_by_id[n["id"]] = n
+
+    for group in groups or []:
+        if not group or not isinstance(group, dict):
             continue
-        bound = g.get("bound")
-        if isinstance(bound, (list, tuple)) and len(bound) >= 4:
+        bound = group.get("bound")
+        if isinstance(bound, list) and len(bound) >= 4:
             try:
-                [float(bound[0]), float(bound[1]), float(bound[2]), float(bound[3])]
-                continue
+                nums = [float(bound[0]), float(bound[1]), float(bound[2]), float(bound[3])]
+                if all(math.isfinite(n) for n in nums):
+                    continue
             except (TypeError, ValueError):
                 pass
-        node_ids = g.get("nodes")
-        if not isinstance(node_ids, list):
-            g["bound"] = [0, 0, 400, 300]
-            continue
+        node_ids = group.get("nodes") if isinstance(group.get("nodes"), list) else []
         rects = []
         for nid in node_ids:
-            n = node_by_id.get(nid)
-            if n is None:
+            node = node_by_id.get(nid)
+            if not node:
                 continue
-            r = _node_rect(n)
-            if r is None:
-                continue
-            rects.append(r)
+            r = _node_rect(node)
+            if r:
+                rects.append(r)
         if not rects:
-            g["bound"] = [0, 0, 400, 300]
+            group["bound"] = [0, 0, 400, 300]
             continue
-        min_x = min(r[0] for r in rects)
-        min_y = min(r[1] for r in rects)
-        max_x = max(r[0] + r[2] for r in rects)
-        max_y = max(r[1] + r[3] for r in rects)
         padding = 20
-        g["bound"] = [
-            max(0, min_x - padding),
-            max(0, min_y - padding),
-            max_x - min_x + 2 * padding,
-            max_y - min_y + 2 * padding,
+        min_x = min(r[0] for r in rects) - padding
+        min_y = min(r[1] for r in rects) - padding
+        max_x = max(r[0] + r[2] for r in rects) + padding
+        max_y = max(r[1] + r[3] for r in rects) + padding
+        group["bound"] = [
+            max(0, min_x),
+            max(0, min_y),
+            max_x - min_x,
+            max_y - min_y,
         ]
+
+
+def _sanitize_groups(groups: list) -> list:
+    if not isinstance(groups, list):
+        return []
+    out = []
+    default_bound = [0, 0, 400, 300]
+    for g in groups:
+        if g is None or not isinstance(g, dict):
+            continue
+        b = g.get("bound")
+        valid = False
+        if isinstance(b, list) and len(b) >= 4:
+            try:
+                valid = all(math.isfinite(float(v)) for v in b[:4])
+            except (TypeError, ValueError):
+                pass
+        if not valid:
+            g["bound"] = default_bound.copy()
+        out.append(g)
+    return out
 
 
 def normalize(data: dict) -> dict:
     """Return a normalized copy of the workflow (links, groups, root keys)."""
-    data = json.loads(json.dumps(data))
-    nodes = data.get("nodes")
-    if not isinstance(nodes, list):
-        nodes = []
-        data["nodes"] = nodes
+    if not data or not isinstance(data, dict):
+        return data
+
+    nodes = data.get("nodes") if isinstance(data.get("nodes"), list) else []
+    data = dict(data)
+    data["nodes"] = nodes
+
     links = data.get("links")
-    if not isinstance(links, list) or _is_links_corrupted(links):
-        links = _rebuild_links(nodes)
+    if _is_links_corrupted(links):
+        data["links"] = _rebuild_links(nodes)
+    else:
         data["links"] = links
+
     last_link = data.get("lastLinkId") if data.get("lastLinkId") is not None else data.get("last_link_id")
-    if links and (last_link is None or last_link == 0):
-        last_link = max(L.get("id", 0) for L in links if isinstance(L, dict))
+    if data.get("links") and (last_link is None or last_link == 0):
+        try:
+            last_link = max(int(l.get("id") or 0) for l in data["links"])
+        except (ValueError, TypeError):
+            pass
     if last_link is not None:
-        data["lastLinkId"] = int(last_link)
+        data["lastLinkId"] = int(last_link) if isinstance(last_link, (int, float)) else last_link
     data.pop("last_link_id", None)
-    last_node = data.get("lastNodeId") or data.get("last_node_id")
+
+    last_node = data.get("lastNodeId") if data.get("lastNodeId") is not None else data.get("last_node_id")
     if last_node is None and nodes:
-        last_node = max(n.get("id", 0) for n in nodes if isinstance(n, dict))
+        try:
+            last_node = max(int(n.get("id") or 0) for n in nodes)
+        except (ValueError, TypeError):
+            pass
     if last_node is not None:
-        data["lastNodeId"] = int(last_node)
+        data["lastNodeId"] = int(last_node) if isinstance(last_node, (int, float)) else last_node
     data.pop("last_node_id", None)
+
     groups = data.get("groups")
-    if isinstance(groups, list):
+    if not isinstance(groups, list):
+        data["groups"] = []
+    else:
         _ensure_group_bounds(groups, nodes)
-    if "config" not in data:
+        data["groups"] = _sanitize_groups(groups)
+
+    if data.get("config") is None:
         data["config"] = {}
-    if "extra" not in data:
+    if data.get("extra") is None:
         data["extra"] = {}
-    if "version" not in data:
+    if data.get("version") is None:
         data["version"] = 0.4
+
     return data
 
 
@@ -201,10 +257,29 @@ def _expand_globs(path_list: list) -> list:
 
 def run_normalize(args: argparse.Namespace) -> int:
     inputs = args.input if isinstance(args.input, list) else [args.input]
-    if not inputs or (len(inputs) == 1 and inputs[0] == "-"):
-        inputs = ["-"] if not inputs or inputs[0] == "-" else inputs
-    inputs = _expand_globs(inputs)
     parser = args._parser
+
+    # No input → normalize workflows/ and example_workflows/ in place
+    if not inputs:
+        workflows_dir = root / "workflows"
+        example_dir = root / "example_workflows"
+        to_normalize: list[Path] = []
+        if workflows_dir.is_dir():
+            to_normalize.extend(sorted(workflows_dir.glob("*.json")))
+        if example_dir.is_dir():
+            to_normalize.extend(sorted(example_dir.glob("*.json")))
+        if not to_normalize:
+            logger.info("No JSON files in workflows/ or example_workflows/.")
+            return 0
+        logger.info(
+            "Normalizing workflows/ and example_workflows/ in place (%d file(s)).",
+            len(to_normalize),
+        )
+        inputs = [str(p) for p in to_normalize]
+    elif len(inputs) == 1 and inputs[0] == "-":
+        inputs = ["-"]
+
+    inputs = _expand_globs(inputs)
     if len(inputs) > 1 and "-" in inputs:
         parser.error("stdin '-' not allowed with multiple inputs")
     if len(inputs) == 1 and inputs[0] == "-":
@@ -213,6 +288,7 @@ def run_normalize(args: argparse.Namespace) -> int:
         if args.output:
             with open(args.output, "w", encoding="utf-8") as f:
                 json.dump(out, f, indent=args.indent or None, ensure_ascii=False)
+            logger.info("Wrote %s", args.output)
         else:
             json.dump(out, sys.stdout, indent=args.indent or None, ensure_ascii=False)
         return 0
@@ -234,11 +310,11 @@ def run_normalize(args: argparse.Namespace) -> int:
             dest = out_path / path.name if out_path.is_dir() else out_path
             with open(dest, "w", encoding="utf-8") as f:
                 json.dump(out, f, indent=args.indent or None, ensure_ascii=False)
-            print("Wrote", dest)
+            logger.info("Wrote %s", dest)
         else:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(out, f, indent=args.indent or None, ensure_ascii=False)
-            print("Normalized", path)
+            logger.info("Normalized %s", path)
     return 0
 
 
@@ -330,7 +406,7 @@ def run_generate() -> int:
         out_per = workflows_dir / f"uml_{dtype}.json"
         with open(out_per, "w", encoding="utf-8") as f:
             json.dump(per_type, f, indent=2)
-        print("Wrote", out_per)
+        logger.info("Wrote %s", out_per)
     groups = [
         {"title": "UML (PlantUML, Mermaid, GraphViz, D2, ERD, Nomnoml, UMLet)", "nodes": [17, 12, 11, 6, 9, 13, 24]},
         {"title": "Block / Sequence diagrams", "nodes": [1, 2, 19, 14, 15, 18]},
@@ -350,7 +426,7 @@ def run_generate() -> int:
     out_all = workflows_dir / "uml_all_diagrams.json"
     with open(out_all, "w", encoding="utf-8") as f:
         json.dump(wf, f, indent=2)
-    print("Wrote", out_all)
+    logger.info("Wrote %s", out_all)
     return 0
 
 
@@ -385,16 +461,22 @@ def run_generate_and_normalize() -> int:
 # -----------------------------------------------------------------------------
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(description="Generate workflow JSON and optionally normalize.")
     subparsers = parser.add_subparsers(dest="command", help="command")
     subparsers.add_parser("generate", help="Generate workflows then normalize workflows/* and example_workflows/*")
     norm_parser = subparsers.add_parser("normalize", help="Only normalize given workflow JSON")
     norm_parser.set_defaults(_parser=norm_parser)
-    norm_parser.add_argument("input", nargs="*", default=["-"], help="Input JSON file(s); '-' for stdin")
+    norm_parser.add_argument(
+        "input",
+        nargs="*",
+        default=[],
+        help="Input JSON file(s); '-' for stdin. Omit to normalize workflows/ and example_workflows/ in place.",
+    )
     norm_parser.add_argument("-o", "--output", default=None, help="Output file or directory")
     norm_parser.add_argument("--indent", type=int, default=2, help="JSON indent (default 2); 0 for compact")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.command == "normalize":
         return run_normalize(args)
     if args.command == "generate":

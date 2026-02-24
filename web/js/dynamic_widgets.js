@@ -1,6 +1,7 @@
 /**
  * Dynamic Widget & Input Slot Visibility for ComfyUI
  * From comfy-dynamic-widgets; loads mappings.json from same directory.
+ * mappings.json is generated at runtime by the Python package comfy_dynamic_widgets when installed (see __init__.py).
  * Version 2 format: visible_when with multi-selector AND logic.
  */
 import { app } from "../../../../scripts/app.js";

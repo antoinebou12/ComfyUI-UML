@@ -424,6 +424,27 @@
         saveStatus._hide = setTimeout(function () { saveStatus.style.display = "none"; }, 4000);
       }
 
+      function saveBlobToComfyUI(blob, filename, buttonEl, successMessage) {
+        if (!blob) return;
+        buttonEl.disabled = true;
+        const formData = new FormData();
+        formData.append("file", blob, filename);
+        fetch("/comfyui-uml/save", { method: "POST", body: formData })
+          .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+          .then(function (result) {
+            buttonEl.disabled = false;
+            if (result.ok) {
+              showSaveStatus(successMessage + (result.data.filename || ""), false);
+            } else {
+              showSaveStatus(result.data.error || "Save failed", true);
+            }
+          })
+          .catch(function (err) {
+            buttonEl.disabled = false;
+            showSaveStatus(err.message || "Save to ComfyUI only works when the viewer is opened from ComfyUI", true);
+          });
+      }
+
       zoomOutBtn.addEventListener("click", function () { setZoom(scale - step); });
       zoomInBtn.addEventListener("click", function () { setZoom(scale + step); });
       zoom100Btn.addEventListener("click", function () { setZoom(1); });
@@ -440,24 +461,12 @@
 
       saveComfyBtn.addEventListener("click", function () {
         if (!currentBlob) return;
-        saveComfyBtn.disabled = true;
-        const filename = "diagram_" + Date.now() + "." + currentFormat;
-        const formData = new FormData();
-        formData.append("file", currentBlob, filename);
-        fetch("/comfyui-uml/save", { method: "POST", body: formData })
-          .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-          .then(function (result) {
-            saveComfyBtn.disabled = false;
-            if (result.ok) {
-              showSaveStatus("Saved to output/uml/" + (result.data.filename || ""), false);
-            } else {
-              showSaveStatus(result.data.error || "Save failed", true);
-            }
-          })
-          .catch(function (err) {
-            saveComfyBtn.disabled = false;
-            showSaveStatus(err.message || "Save to ComfyUI only works when the viewer is opened from ComfyUI", true);
-          });
+        saveBlobToComfyUI(
+          currentBlob,
+          "diagram_" + Date.now() + "." + currentFormat,
+          saveComfyBtn,
+          "Saved to output/uml/"
+        );
       });
 
       copyLinkBtn.addEventListener("click", function () {
@@ -483,35 +492,6 @@
         isCropMode = false;
         updateCropUI();
       });
-
-      function getCroppedBlob(cb) {
-        if (!selectionRect || selectionRect.w <= 0 || selectionRect.h <= 0) { cb(null); return; }
-        const viewport = getViewportElement();
-        if (!viewport) { cb(null); return; }
-        const svg = viewport.querySelector("svg");
-        const img = viewport.querySelector("img");
-        if (svg) {
-          const clone = svg.cloneNode(true);
-          const r = selectionRect;
-          clone.setAttribute("viewBox", r.x + " " + r.y + " " + r.w + " " + r.h);
-          clone.setAttribute("width", String(r.w));
-          clone.setAttribute("height", String(r.h));
-          const s = new XMLSerializer().serializeToString(clone);
-          cb(new Blob([s], { type: "image/svg+xml" }), "svg");
-          return;
-        }
-        if (img && img.complete && img.naturalWidth) {
-          const c = document.createElement("canvas");
-          c.width = Math.max(1, Math.floor(selectionRect.w));
-          c.height = Math.max(1, Math.floor(selectionRect.h));
-          const ctx = c.getContext("2d");
-          if (!ctx) { cb(null); return; }
-          ctx.drawImage(img, selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h, 0, 0, c.width, c.height);
-          c.toBlob(function (blob) { cb(blob || null, "png"); }, "image/png");
-          return;
-        }
-        cb(null);
-      }
 
       function getPngBlobForClipboard(cb) {
         const viewport = getViewportElement();
@@ -673,24 +653,12 @@
       saveCropComfyBtn.addEventListener("click", function () {
         getCroppedBlob(function (blob, format) {
           if (!blob) return;
-          saveCropComfyBtn.disabled = true;
-          const filename = "uml_crop_" + Date.now() + "." + (format || "png");
-          const formData = new FormData();
-          formData.append("file", blob, filename);
-          fetch("/comfyui-uml/save", { method: "POST", body: formData })
-            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-            .then(function (result) {
-              saveCropComfyBtn.disabled = false;
-              if (result.ok) {
-                showSaveStatus("Saved crop to output/uml/" + (result.data.filename || ""), false);
-              } else {
-                showSaveStatus(result.data.error || "Save failed", true);
-              }
-            })
-            .catch(function (err) {
-              saveCropComfyBtn.disabled = false;
-              showSaveStatus(err.message || "Save to ComfyUI only works when opened from ComfyUI", true);
-            });
+          saveBlobToComfyUI(
+            blob,
+            "uml_crop_" + Date.now() + "." + (format || "png"),
+            saveCropComfyBtn,
+            "Saved crop to output/uml/"
+          );
         });
       });
 

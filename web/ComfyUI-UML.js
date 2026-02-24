@@ -4,6 +4,7 @@
  */
 import { app } from "../../scripts/app.js";
 
+/** Must stay in sync with nodes/kroki_client.py SUPPORTED_FORMATS (diagram type -> allowed output formats). */
 const SUPPORTED_FORMATS = {
   actdiag: ["png", "svg", "pdf"],
   blockdiag: ["png", "svg", "pdf"],
@@ -301,6 +302,24 @@ function _ensureGroupBounds(groups, nodes) {
   }
 }
 
+/** Ensure every group has a valid bound (array of 4 numbers). Removes null/non-object entries. */
+function _sanitizeGroups(groups) {
+  if (!Array.isArray(groups)) return [];
+  const out = [];
+  const defaultBound = [0, 0, 400, 300];
+  for (const g of groups) {
+    if (g == null || typeof g !== "object") continue;
+    const b = g.bound;
+    const valid =
+      Array.isArray(b) &&
+      b.length >= 4 &&
+      b.slice(0, 4).every((v) => Number.isFinite(Number(v)));
+    if (!valid) g.bound = defaultBound.slice();
+    out.push(g);
+  }
+  return out;
+}
+
 function _normalizeWorkflowData(raw) {
   if (!raw) return raw;
   let data = raw;
@@ -339,6 +358,7 @@ function _normalizeWorkflowData(raw) {
     data.groups = [];
   } else {
     _ensureGroupBounds(data.groups, nodes);
+    data.groups = _sanitizeGroups(data.groups);
   }
 
   if (data.config == null) data.config = {};
@@ -360,7 +380,26 @@ function _installWorkflowNormalizer() {
       } catch (e) {
         console.warn("[ComfyUI-UML] Workflow normalize failed:", e);
       }
-      return original.call(this, normalized, ...rest);
+      try {
+        return await original.call(this, normalized, ...rest);
+      } catch (e) {
+        if (
+          e instanceof TypeError &&
+          (e.message === "Cannot convert undefined or null to object" ||
+            /undefined or null to object/i.test(e.message))
+        ) {
+          try {
+            const safe = _normalizeWorkflowData(graphData);
+            if (safe && typeof safe === "object") {
+              safe.groups = [];
+            }
+            return await original.call(this, safe, ...rest);
+          } catch (retryErr) {
+            console.warn("[ComfyUI-UML] Workflow load retry failed:", retryErr);
+          }
+        }
+        throw e;
+      }
     };
     app.loadGraphData.__umlPatched = true;
     console.log("[ComfyUI-UML] Workflow normalizer installed");

@@ -1,6 +1,6 @@
 # LLM Call (OpenAI/Anthropic)
 
-Calls an LLM (OpenAI or Anthropic) with a prompt and optional negative prompt. The **text** output is compatible with the UML Render node’s **code_input** for generating diagram source from natural language.
+Calls an LLM (OpenAI or Anthropic) with a prompt and optional negative prompt. The **text** output is compatible with the UML Render node's **code_input** for generating diagram source from natural language.
 
 ## Parameters
 
@@ -12,7 +12,7 @@ Calls an LLM (OpenAI or Anthropic) with a prompt and optional negative prompt. T
 
 ## Outputs
 
-- **text**: The model’s response. Connect to **UML Render** → **code_input** to render as a diagram.
+- **text**: The model's response. Connect to **UML Render** → **code_input** to render as a diagram.
 
 ## Usage
 

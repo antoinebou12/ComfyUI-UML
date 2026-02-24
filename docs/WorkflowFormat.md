@@ -2,6 +2,8 @@
 
 Workflows shipped in `workflows/` and `example_workflows/` use a format that ComfyUI's frontend can load and convert correctly when you **Queue Prompt**. If you load a workflow from Manager cache, a URL, or a paste and see errors like "Cannot convert undefined or null to object" or "KeyError: class_type", the JSON is likely in a different or corrupted format.
 
+When you **Load** a workflow from a file in ComfyUI, the ComfyUI-UML extension runs an in-browser normalizer that fixes camelCase, links, and group bounds. For workflows loaded from Manager, a URL, or a paste (where that normalizer may not run), use the `scripts/generate_all_diagrams_workflow.py normalize` command below to repair the file first.
+
 ## Expected structure
 
 - **links:** Array of **objects**, one per link:
@@ -20,18 +22,17 @@ Workflows shipped in `workflows/` and `example_workflows/` use a format that Com
 
 ## Fixing broken workflows
 
-Use the normalizer script to repair a workflow file (e.g. after pasting from the browser or loading from a bad source):
+Use `scripts/generate_all_diagrams_workflow.py normalize` to repair a workflow file (e.g. after pasting from the browser or loading from a bad source):
 
 ```bash
 # From the ComfyUI-UML repo root
-python scripts/normalize_workflow.py workflows/llm_kroki_logo.json -o fixed.json
+python scripts/generate_all_diagrams_workflow.py normalize workflows/llm_kroki_logo.json -o fixed.json
 # Or stdin
-python scripts/normalize_workflow.py - < broken.json > fixed.json
+python scripts/generate_all_diagrams_workflow.py normalize - < broken.json > fixed.json
 ```
 
 The script rebuilds `links` from node inputs/outputs if they are missing or corrupted, ensures every group has a valid `bound`, and normalizes root keys to camelCase.
 
 ## See also
 
-- [README – Workflows](../README.md#workflows)
-- Plan: Fix ComfyUI workflow load and execution errors (Rectangle.set, KeyError class_type, JSON / missing nodes)
+- [Workflows](Workflows.md) — workflow list, loading tips, and normalize script usage.

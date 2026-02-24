@@ -27,5 +27,5 @@ Renders diagram source (Mermaid, PlantUML, Graphviz, D2, and 28+ types) to an im
 
 ## See also
 
-- [Kroki diagram types](https://docs.kroki.io/kroki/diagram-types)
+- [Kroki diagram types and format support](KrokiFormats.md)
 - [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/)
