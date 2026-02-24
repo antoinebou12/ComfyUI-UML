@@ -1,5 +1,0 @@
-Generate a {{diagram_type}} diagram that illustrates the following: {{description}}
----
-Output only valid {{diagram_type}} diagram code. No markdown fences (no ```). No explanation or commentary.
----
-Do not add any text outside the diagram syntax. Do not include code block markers.

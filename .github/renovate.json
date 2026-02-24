@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "managers": ["pyproject", "npm"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "patch and minor"
+    }
+  ],
+  "npm": {
+    "packageRules": [
+      {
+        "matchPaths": ["web/js/package.json"],
+        "groupName": "web/js npm"
+      }
+    ]
+  },
+  "schedule": ["before 6am on monday"],
+  "automerge": false
+}
