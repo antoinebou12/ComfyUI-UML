@@ -334,11 +334,17 @@ zoomInBtn.addEventListener("click", function () { setZoom(scale + step); });
 zoom100Btn.addEventListener("click", function () { setZoom(1); });
 zoomFitBtn.addEventListener("click", fitToView);
 
+function getDownloadExtension() {
+  if (currentFormat === "markdown") return "md";
+  if (currentFormat === "jpeg") return "jpg";
+  return currentFormat;
+}
+
 downloadBtn.addEventListener("click", function () {
   if (!currentBlob) return;
   const a = document.createElement("a");
   a.href = URL.createObjectURL(currentBlob);
-  a.download = "diagram." + currentFormat;
+  a.download = "diagram." + getDownloadExtension();
   a.click();
   URL.revokeObjectURL(a.href);
 });
@@ -347,7 +353,7 @@ saveComfyBtn.addEventListener("click", function () {
   if (!currentBlob) return;
   saveBlobToComfyUI(
     currentBlob,
-    "diagram_" + Date.now() + "." + currentFormat,
+    "diagram_" + Date.now() + "." + getDownloadExtension(),
     saveComfyBtn,
     "Saved to output/uml/"
   );
@@ -554,7 +560,7 @@ function enableToolbarAfterRender(isImageFormat, isSaveableFile) {
   panY = 0;
   applyTransform();
   if (!isEmbed) {
-    const canSave = isImageFormat || isSaveableFile;
+    const canSave = isImageFormat || isSaveableFile || currentBlob != null;
     downloadBtn.disabled = !canSave;
     saveComfyBtn.disabled = !canSave;
     copyLinkBtn.disabled = !krokiUrl;
@@ -631,6 +637,9 @@ async function renderWithView(contentEl, format, data, options) {
   if (opts.blob != null) currentBlob = opts.blob;
   else if (format === "svg" && typeof data === "string") currentBlob = new Blob([data], { type: "image/svg+xml" });
   else if ((format === "png" || format === "jpeg") && data instanceof Blob) currentBlob = data;
+  else if (format === "txt" && typeof data === "string") currentBlob = new Blob([data], { type: "text/plain" });
+  else if (format === "markdown" && typeof data === "string") currentBlob = new Blob([data], { type: "text/markdown" });
+  else if (format === "base64" && typeof data === "string") currentBlob = new Blob([data], { type: "application/octet-stream" });
   if (opts.clearKrokiUrl) krokiUrl = "";
   enableToolbarAfterRender(opts.isImageFormat === true, opts.isSaveableFile === true);
 }
@@ -794,7 +803,12 @@ async function loadDiagram(url) {
       blob: currentFormat === "svg" ? new Blob([data], { type: "image/svg+xml" }) : data,
     });
   } catch (err) {
-    showMessage("Failed to render diagram: " + errMsg(err), true);
+    const msg = errMsg(err);
+    if (msg && msg.includes("Invalid SVG")) {
+      showMessage("Diagram could not be displayed.", true);
+    } else {
+      showMessage("Failed to render diagram: " + msg, true);
+    }
   }
 }
 

@@ -3,6 +3,12 @@
 [![PR Gate](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/pr-gate.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/pr-gate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-comfyui--uml-blue)](https://registry.comfy.org/publishers/antoinebou12/nodes/comfyui-uml)
+[![Workflow Tests](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/workflow-tests.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/workflow-tests.yml)
+[![Publish to Comfy registry](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/publish-node.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/publish-node.yml)
+
+[![GitHub stars](https://img.shields.io/github/stars/antoinebou12/ComfyUI-UML)](https://github.com/antoinebou12/ComfyUI-UML/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/antoinebou12/ComfyUI-UML)](https://github.com/antoinebou12/ComfyUI-UML/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/antoinebou12/ComfyUI-UML)](https://github.com/antoinebou12/ComfyUI-UML/watchers)
 
 <p align="center">
   <img src="icon.png" alt="ComfyUI-UML" width="128" height="128">
@@ -39,6 +45,14 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 See [docs/Usage.md](docs/Usage.md) and [docs/KrokiFormats.md](docs/KrokiFormats.md) for details.
 
 ## Installation
+
+**From Comfy Registry (recommended):**
+
+```bash
+comfy node install comfyui-uml
+```
+
+**Manual:**
 
 1. Clone or copy this folder into `ComfyUI/custom_nodes/`.
 2. Install dependencies: `pip install -r requirements.txt` or `uv sync`.

@@ -12,16 +12,32 @@ export function formatFromUrl(url) {
   if (!url || typeof url !== "string") return "svg";
   const s = url.trim();
   const lower = s.toLowerCase();
+  
   if (lower.startsWith("data:")) {
     if (lower.includes("image/svg+xml")) return "svg";
-    if (lower.includes("image/png") || lower.includes("image/jpeg")) return "png";
+    if (lower.includes("image/png")) return "png";
+    if (lower.includes("image/jpeg")) return "jpeg";
     if (lower.includes("text/plain")) return "txt";
     if (lower.includes("text/markdown")) return "markdown";
-    return "svg";
+    return "base64";
   }
+
+  // Handle ComfyUI /view URLs
+  if (lower.includes("/view?filename=")) {
+    if (lower.includes(".svg")) return "svg";
+    if (lower.includes(".png")) return "png";
+    if (lower.includes(".jpg") || lower.includes(".jpeg")) return "jpeg";
+    if (lower.includes(".pdf")) return "pdf";
+    if (lower.includes(".txt")) return "txt";
+  }
+
   if (lower.includes("/svg/")) return "svg";
-  if (lower.includes("/png/") || lower.includes("/jpeg/")) return "png";
+  if (lower.includes("/png/")) return "png";
+  if (lower.includes("/jpeg/")) return "jpeg";
+  if (lower.includes("/pdf/")) return "pdf";
   if (lower.includes("/txt/")) return "txt";
+  if (lower.includes("/base64/")) return "base64";
+  
   return "svg";
 }
 

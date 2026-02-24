@@ -394,26 +394,39 @@ def _has_viewer_node(nodes: list) -> bool:
 
 
 def _ensure_uml_outputs(node: dict) -> bool:
-    """Ensure UMLDiagram has 4 outputs: IMAGE, path, kroki_url, content_for_viewer. Return True if changed."""
+    """Ensure UMLDiagram has 5 outputs: IMAGE, path, kroki_url, content_for_viewer, viewer_url. Return True if changed."""
     if not node or node.get("type") != "UMLDiagram":
         return False
     outs = node.get("outputs")
     if not isinstance(outs, list):
         return False
     names = [o.get("name") for o in outs if o and o.get("name")]
-    if "content_for_viewer" in names:
-        return False
-    last_slot = max((o.get("slot_index", i) for i, o in enumerate(outs) if o), default=-1)
-    outs.append(
-        {
-            "name": "content_for_viewer",
-            "type": "STRING",
-            "links": None,
-            "slot_index": last_slot + 1,
-            "shape": 3,
-        }
-    )
-    return True
+    changed = False
+    if "content_for_viewer" not in names:
+        last_slot = max((o.get("slot_index", i) for i, o in enumerate(outs) if o), default=-1)
+        outs.append(
+            {
+                "name": "content_for_viewer",
+                "type": "STRING",
+                "links": None,
+                "slot_index": last_slot + 1,
+                "shape": 3,
+            }
+        )
+        changed = True
+    if "viewer_url" not in names:
+        last_slot = max((o.get("slot_index", i) for i, o in enumerate(outs) if o), default=-1)
+        outs.append(
+            {
+                "name": "viewer_url",
+                "type": "STRING",
+                "links": None,
+                "slot_index": last_slot + 1,
+                "shape": 3,
+            }
+        )
+        changed = True
+    return changed
 
 
 def _first_uml_diagram_id(nodes: list) -> int | None:
@@ -708,6 +721,7 @@ def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
         {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
         {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
         {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
     ]
     node = {
         "id": 1,
@@ -747,6 +761,7 @@ def _build_uml_single_node_workflow() -> dict:
         {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
         {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
         {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
     ]
     outputs = [dict(o) for o in outputs_template]
     outputs[2]["links"] = [1]
@@ -810,6 +825,7 @@ def _build_uml_mermaid_workflow() -> dict:
         {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
         {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
         {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
     ]
     outputs = [dict(o) for o in outputs_template]
     outputs[2]["links"] = [1]
@@ -874,6 +890,7 @@ def _build_uml_single_node_multi_workflow() -> dict:
         {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
         {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
         {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
     ]
 
     nodes = []
@@ -977,6 +994,7 @@ def _build_viewer_formats_test_workflow() -> dict:
         {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
         {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
         {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
     ]
 
     nodes = []
@@ -1223,6 +1241,7 @@ def _build_llm_ollama_workflow() -> dict:
                         "slot_index": 3,
                         "shape": 3,
                     },
+                    {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
                 ],
                 "properties": {"Node name for S/R": "UMLDiagram"},
                 "widgets_values": [0, "https://kroki.io", 11, "", 1],

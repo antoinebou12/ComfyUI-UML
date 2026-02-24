@@ -1,20 +1,17 @@
-"""ComfyUI-UML nodes: diagram rendering (Kroki API), prompt engine, LLM call."""
+"""ComfyUI-UML nodes: diagram rendering (Kroki API), UML Code Assistant (LLM)."""
 
-from .llm_call import LLMCall
-from .prompt_engine import LLMPromptEngine
 from .uml_diagram import UMLDiagram
+from .uml_llm import UMLLLMCodeGenerator
 from .uml_viewer_url import UMLViewerURL
 
 NODE_CLASS_MAPPINGS = {
-    "LLMCall": LLMCall,
-    "LLMPromptEngine": LLMPromptEngine,
+    "UMLLLMCodeGenerator": UMLLLMCodeGenerator,
     "UMLDiagram": UMLDiagram,
     "UMLViewerURL": UMLViewerURL,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LLMCall": "LLM Call (OpenAI/Anthropic/Ollama)",
-    "LLMPromptEngine": "LLM Prompt Engine",
+    "UMLLLMCodeGenerator": "UML Code Assistant",
     "UMLDiagram": "UML Render",
     "UMLViewerURL": "Diagram Viewer URL",
 }
@@ -22,8 +19,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 __all__ = [
     "NODE_CLASS_MAPPINGS",
     "NODE_DISPLAY_NAME_MAPPINGS",
-    "LLMCall",
-    "LLMPromptEngine",
+    "UMLLLMCodeGenerator",
     "UMLDiagram",
     "UMLViewerURL",
 ]

@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-uml"
-version = "0.1.7"
+version = "0.1.8"
 description = "Render Mermaid, PlantUML, Graphviz, D2 and 28 Kroki diagram types as PNG/SVG/PDF in ComfyUI. Uses the Kroki API (no local setup) or optional local Mermaid/Graphviz. Includes a built-in zoomable viewer (Save to ComfyUI, shareable URLs), optional cairosvg for in-node SVG/PNG preview, and LLM Prompt Engine + LLM Call nodes to generate diagram code from templates."
 readme = "README.md"
 license = { text = "MIT" }

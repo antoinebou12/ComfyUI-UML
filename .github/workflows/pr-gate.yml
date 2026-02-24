@@ -26,4 +26,3 @@ jobs:
     uses: PozzettiAndrea/comfy-test/.github/workflows/pr-gate.yml@main
     with:
       test-workflow-name: "Workflow Tests"
-      config-file: "comfy-test.toml"

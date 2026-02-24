@@ -67,7 +67,7 @@ SUPPORTED_FORMATS: dict[str, list[str]] = {
     "erd": ["png", "svg", "jpeg", "pdf"],
     "excalidraw": ["svg"],
     "graphviz": ["png", "svg", "pdf", "jpeg"],
-    "mermaid": ["svg", "png", "base64"],
+    "mermaid": ["svg", "png"],
     "nomnoml": ["svg"],
     "nwdiag": ["png", "svg", "pdf"],
     "packetdiag": ["png", "svg", "pdf"],
@@ -276,7 +276,7 @@ def render_local(
 
 
 def _script_dir() -> str:
-    """Plugin root directory (parent of this package); scripts/ lives here."""
+    """Plugin root directory (parent of this package); web/js/ has the Mermaid render script."""
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -292,10 +292,10 @@ def _render_local_mermaid(
     node_exe = shutil.which("node")
     if not node_exe:
         return None
-    script_path = os.path.join(_script_dir(), "scripts", "render_mermaid.mjs")
+    script_path = os.path.join(_script_dir(), "web", "js", "render_mermaid.mjs")
     if not os.path.isfile(script_path):
         return None
-    node_modules = os.path.join(_script_dir(), "scripts", "node_modules", "beautiful-mermaid")
+    node_modules = os.path.join(_script_dir(), "web", "js", "node_modules", "beautiful-mermaid")
     if not os.path.isdir(node_modules):
         return None
 
@@ -317,7 +317,7 @@ def _render_local_mermaid(
             [node_exe, script_path, tmp_path],
             capture_output=True,
             timeout=60,
-            cwd=os.path.join(_script_dir(), "scripts"),
+            cwd=os.path.join(_script_dir(), "web", "js"),
             env=env,
         )
     finally:

@@ -50,6 +50,14 @@ function getWidgetValue(node, name) {
   return w != null ? w.value : undefined;
 }
 
+/** Normalize a widget value to string (handles object-shaped values from loaded workflows). */
+function widgetValueString(val, fallback = "") {
+  if (val == null) return fallback;
+  if (typeof val === "string") return val;
+  if (typeof val === "object" && "value" in val) return String(val.value ?? fallback);
+  return String(val);
+}
+
 /** Deflate (raw) + base64url for Kroki GET URL. Uses CompressionStream when available. */
 async function deflateBase64Url(text) {
   if (!text || typeof text !== "string") return "";
@@ -84,9 +92,9 @@ async function deflateBase64Url(text) {
  */
 async function buildKrokiUrlFromNode(node) {
   const code = getWidgetValue(node, "code");
-  const diagramType = (getWidgetValue(node, "diagram_type") || "mermaid").toString().toLowerCase().trim();
-  const outputFormat = (getWidgetValue(node, "output_format") || "svg").toString().toLowerCase().trim();
-  const baseUrl = (getWidgetValue(node, "kroki_url") || "https://kroki.io").toString().replace(/\/$/, "");
+  const diagramType = widgetValueString(getWidgetValue(node, "diagram_type"), "mermaid").toLowerCase().trim();
+  const outputFormat = widgetValueString(getWidgetValue(node, "output_format"), "svg").toLowerCase().trim();
+  const baseUrl = widgetValueString(getWidgetValue(node, "kroki_url"), "https://kroki.io").replace(/\/$/, "");
 
   const formats = SUPPORTED_FORMATS[diagramType] || ["png", "svg"];
   if (!formats.includes(outputFormat)) return null;
@@ -100,7 +108,11 @@ async function buildKrokiUrlFromNode(node) {
 }
 
 function applyFormatsForType(node, diagramType) {
-  const typeKey = (diagramType || "").toLowerCase().trim();
+  const raw =
+    diagramType != null && typeof diagramType === "object" && "value" in diagramType
+      ? diagramType.value
+      : diagramType;
+  const typeKey = String(raw ?? "").toLowerCase().trim();
   const formats = SUPPORTED_FORMATS[typeKey] || ["png", "svg"];
   const formatWidget = node.widgets?.find((w) => w.name === "output_format");
   if (formatWidget && Array.isArray(formatWidget.options)) {
@@ -217,7 +229,7 @@ app.registerExtension({
         callback: () => {
           buildKrokiUrlFromNode(node).then((krokiUrl) => {
             const base = getViewerBaseUrl();
-            const outputFormat = (getWidgetValue(node, "output_format") || "svg").toString().toLowerCase().trim();
+            const outputFormat = widgetValueString(getWidgetValue(node, "output_format"), "svg").toLowerCase().trim();
             let target = krokiUrl ? base + "?url=" + encodeURIComponent(krokiUrl) : base;
             if (krokiUrl) target += "&format=" + encodeURIComponent(outputFormat);
             window.open(target, "_blank", "noopener");
@@ -264,17 +276,38 @@ app.registerExtension({
   },
 });
 
-/** Build viewer URL (and iframe variant) from Diagram Viewer URL node: kroki_url only. */
-function getViewerUrlFromViewerUrlNode(node) {
-  const kroki = (getWidgetValue(node, "kroki_url") ?? "").toString().trim();
-  const url = kroki;
+/** Resolve effective kroki URL for Diagram Viewer URL node: widget value or from linked UMLDiagram. */
+async function getEffectiveKrokiUrlForViewerUrlNode(node) {
+  const widgetVal = widgetValueString(getWidgetValue(node, "kroki_url"), "").trim();
+  if (widgetVal) return widgetVal;
+  const inp = node.inputs?.find((i) => i.name === "kroki_url");
+  if (!inp || inp.link == null) return null;
+  const graph = app.graph;
+  if (!graph?.links?.[inp.link]) return null;
+  const link = graph.links[inp.link];
+  const origin = graph.getNodeById?.(link.origin_id);
+  if (!origin || origin.comfyClass !== "UMLDiagram") return null;
+  return buildKrokiUrlFromNode(origin);
+}
+
+/** Build viewer URL (and iframe variant) from a kroki/content URL string. */
+function getViewerUrlsFromKrokiUrl(url) {
   const base = getViewerBaseUrl();
-  if (!url) return { full: base + "?embed=1", iframe: base + "?embed=1" };
+  if (!url || !url.trim()) return { full: base + "?embed=1", iframe: base + "?embed=1" };
   const formatParam = formatFromUrl(url);
   return {
     full: base + buildViewerQuery(url, formatParam, false),
     iframe: base + buildViewerQuery(url, formatParam, true),
   };
+}
+
+/** Build viewer URL (and iframe variant) from Diagram Viewer URL node. Uses effectiveUrl when provided (e.g. from getEffectiveKrokiUrlForViewerUrlNode). */
+function getViewerUrlFromViewerUrlNode(node, effectiveUrl) {
+  const url =
+    effectiveUrl !== undefined
+      ? widgetValueString(effectiveUrl, "").trim()
+      : widgetValueString(getWidgetValue(node, "kroki_url"), "").trim();
+  return getViewerUrlsFromKrokiUrl(url);
 }
 
 /**
@@ -309,9 +342,9 @@ function _attachInlinePreview(node) {
     computeSize() { return [node.size?.[0] ?? 420, PREVIEW_HEIGHT + 8]; },
   });
 
-  function refreshPreview() {
-    const kroki = (getWidgetValue(node, "kroki_url") ?? "").toString().trim();
-    if (!kroki) {
+  async function refreshPreview() {
+    const url = await getEffectiveKrokiUrlForViewerUrlNode(node);
+    if (!url) {
       iframe.removeAttribute("src");
       placeholder.style.display = "flex";
       iframe.style.opacity = "0";
@@ -319,7 +352,7 @@ function _attachInlinePreview(node) {
     }
     placeholder.style.display = "none";
     iframe.style.opacity = "1";
-    const { iframe: iframeSrc } = getViewerUrlFromViewerUrlNode(node);
+    const { iframe: iframeSrc } = getViewerUrlFromViewerUrlNode(node, url);
     if (iframe.src !== iframeSrc) iframe.src = iframeSrc;
   }
 
@@ -335,6 +368,12 @@ function _attachInlinePreview(node) {
   const prevOnExecuted = node.onExecuted;
   node.onExecuted = function () {
     if (typeof prevOnExecuted === "function") prevOnExecuted.apply(this, arguments);
+    refreshPreview();
+  };
+
+  const prevOnConnectionsChange = node.onConnectionsChange;
+  node.onConnectionsChange = function (type, index, connected, link_info) {
+    if (typeof prevOnConnectionsChange === "function") prevOnConnectionsChange.apply(this, arguments);
     refreshPreview();
   };
 

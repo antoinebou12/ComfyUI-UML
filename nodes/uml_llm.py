@@ -1,13 +1,48 @@
 """
-LLM Call node: call OpenAI, Anthropic, or Ollama with prompt + optional negative prompt; output compatible with UMLDiagram code_input.
+UML Code Assistant: single node that builds prompt from template/prompts/ and calls LLM (Ollama, OpenAI, Anthropic).
+Output flows directly into UML Render (UMLDiagram) code_input.
 """
 
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
 
-# Provider config
+# --- Prompts directory and helpers (from prompt_engine) ---
+def _prompts_dir() -> Path:
+    return Path(__file__).resolve().parent.parent / "prompts"
+
+
+def _list_prompt_files() -> list[str]:
+    d = _prompts_dir()
+    if not d.is_dir():
+        return []
+    return sorted(f.name for f in d.glob("*.txt"))
+
+
+def _load_prompt_file(name: str) -> tuple[str, str, str]:
+    path = _prompts_dir() / name
+    if not path.is_file():
+        return "", "", ""
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    parts = [p.strip() for p in raw.split("\n---\n")]
+    template = parts[0] if len(parts) > 0 else ""
+    positive = parts[1] if len(parts) > 1 else ""
+    negative = parts[2] if len(parts) > 2 else ""
+    return template, positive, negative
+
+
+def _apply_placeholders(
+    text: str, description: str, diagram_type: str = "", format_name: str = ""
+) -> str:
+    text = text.replace("{{description}}", description)
+    text = text.replace("{{diagram_type}}", diagram_type)
+    text = text.replace("{{format}}", format_name)
+    return text
+
+
+# --- LLM provider config (from llm_call) ---
 _OPENAI_BASE = "https://api.openai.com/v1"
 _ANTHROPIC_BASE = "https://api.anthropic.com"
 _OLLAMA_BASE = "http://localhost:11434"
@@ -34,27 +69,61 @@ OLLAMA_MODELS = [
 ]
 
 
-class LLMCall:
-    """Call an LLM (OpenAI, Anthropic, or Ollama) with prompt and optional negative prompt; output has .content for UMLDiagram code_input."""
+class UMLLLMCodeGenerator:
+    """
+    UML Code Assistant: format prompt from template + prompts/, call LLM; output is code_input for UML Render.
+    Default provider: Ollama; default model: llama3.2.
+    """
 
     CATEGORY = "UML"
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("text",)
+    RETURN_NAMES = ("code_input",)
     FUNCTION = "run"
     OUTPUT_NODE = False
 
     @classmethod
     def INPUT_TYPES(cls):
-        provider_choices = ["openai", "anthropic", "ollama"]
-        model_choices = OPENAI_MODELS + ANTHROPIC_MODELS + OLLAMA_MODELS
+        files = _list_prompt_files()
+        template_file_choices = [""] + files
+        provider_choices = ["ollama", "openai", "anthropic"]
+        model_choices = OLLAMA_MODELS + OPENAI_MODELS + ANTHROPIC_MODELS
         return {
             "required": {
-                "prompt": ("STRING", {"multiline": True, "default": ""}),
-                "provider": (provider_choices, {"default": "openai"}),
-                "model": (model_choices, {"default": "gpt-4o-mini"}),
+                "description": (
+                    "STRING",
+                    {
+                        "default": "Kroki – Creates diagrams from textual descriptions!",
+                        "multiline": False,
+                    },
+                ),
             },
             "optional": {
-                "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
+                "template": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "Generate a Mermaid diagram that illustrates: {{description}}",
+                    },
+                ),
+                "positive_instruction": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
+                    },
+                ),
+                "negative_instruction": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "Do not add any text outside the diagram syntax.",
+                    },
+                ),
+                "template_file": (template_file_choices, {"default": ""}),
+                "diagram_type": ("STRING", {"default": "mermaid", "multiline": False}),
+                "output_format": ("STRING", {"default": "svg", "multiline": False}),
+                "provider": (provider_choices, {"default": "ollama"}),
+                "model": (model_choices, {"default": "llama3.2"}),
                 "api_key": ("STRING", {"default": "", "multiline": False}),
                 "ollama_base_url": ("STRING", {"default": "", "multiline": False}),
             },
@@ -66,15 +135,42 @@ class LLMCall:
 
     def run(
         self,
-        prompt: str,
-        provider: str,
-        model: str,
-        negative_prompt: str = "",
+        description: str,
+        template: str = "",
+        positive_instruction: str = "",
+        negative_instruction: str = "",
+        template_file: str = "",
+        diagram_type: str = "mermaid",
+        output_format: str = "svg",
+        provider: str = "ollama",
+        model: str = "llama3.2",
         api_key: str = "",
         ollama_base_url: str = "",
     ):
-        prompt = (prompt or "").strip()
-        negative = (negative_prompt or "").strip()
+        # Load from prompts/ if file selected
+        if (template_file or "").strip():
+            t, p, n = _load_prompt_file(template_file.strip())
+            if t:
+                template = t
+            if p:
+                positive_instruction = p
+            if n:
+                negative_instruction = n
+
+        desc = (description or "").strip()
+        dt = (diagram_type or "").strip()
+        fmt = (output_format or "").strip()
+        template = _apply_placeholders((template or "").strip(), desc, dt, fmt)
+        positive_instruction = _apply_placeholders(
+            (positive_instruction or "").strip(), desc, dt, fmt
+        )
+        negative_instruction = _apply_placeholders(
+            (negative_instruction or "").strip(), desc, dt, fmt
+        )
+
+        prompt = template
+        if positive_instruction:
+            prompt = prompt + "\n\nInstructions: " + positive_instruction
 
         if provider == "ollama":
             base_url = (
@@ -83,7 +179,7 @@ class LLMCall:
                 or _OLLAMA_BASE
             )
             base_url = base_url.rstrip("/")
-            text = self._call_ollama(prompt, negative, model, base_url)
+            text = self._call_ollama(prompt, negative_instruction, model, base_url)
         else:
             key = (api_key or "").strip() or os.environ.get(
                 "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY", ""
@@ -93,11 +189,10 @@ class LLMCall:
                     "Set OPENAI_API_KEY or ANTHROPIC_API_KEY in the environment, or pass api_key to the node."
                 )
             if provider == "openai":
-                text = self._call_openai(prompt, negative, model, key)
+                text = self._call_openai(prompt, negative_instruction, model, key)
             else:
-                text = self._call_anthropic(prompt, negative, model, key)
+                text = self._call_anthropic(prompt, negative_instruction, model, key)
 
-        # Return object with .content so UMLDiagram _normalize_to_code() accepts it
         result = SimpleNamespace(content=text, text=text)
         return (result,)
 
