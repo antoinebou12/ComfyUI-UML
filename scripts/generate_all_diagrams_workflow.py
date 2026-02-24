@@ -536,6 +536,8 @@ def _run_add_viewer_to_workflows() -> int:
     if not workflows_dir.is_dir():
         return 0
     for path in sorted(workflows_dir.glob("*.json")):
+        if path.name == "uml_single_diagram_only.json":
+            continue
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -1090,6 +1092,12 @@ def run_generate() -> int:
     uml_single_node_multi_wf = _build_uml_single_node_multi_workflow()
     _write_workflow_json(workflows_dir / "uml_single_node_multi.json", uml_single_node_multi_wf)
     logger.info("Wrote %s", workflows_dir / "uml_single_node_multi.json")
+
+    # Diagram-only workflow for CI: one UMLDiagram, no links; avoids graphToPrompt link validation on macOS.
+    blockdiag_idx = DIAGRAM_TYPES.index("blockdiag")
+    uml_single_diagram_only_wf = normalize(build_single_node_workflow("blockdiag", blockdiag_idx))
+    _write_workflow_json(workflows_dir / "uml_single_diagram_only.json", uml_single_diagram_only_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_single_diagram_only.json")
 
     groups = [
         {

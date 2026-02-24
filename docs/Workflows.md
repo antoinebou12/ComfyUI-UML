@@ -52,4 +52,4 @@ Use `python scripts/generate_all_diagrams_workflow.py generate` to only generate
 
 ## CPU execution tests (comfy-test)
 
-Comfy-test runs workflow execution against the `cpu` list in `comfy-test.toml` and `pyproject.toml`. The suite uses a single minimal workflow: **workflows/uml_single_node.json** (UMLDiagram + UMLViewerURL, no groups). To add more workflows to the test suite, add JSON files under **workflows/** and append their filenames to the `cpu` array in both config files.
+Comfy-test runs workflow execution against the `cpu` list in `comfy-test.toml` and `pyproject.toml`. The suite uses a single diagram-only workflow: **workflows/uml_single_diagram_only.json** (one UMLDiagram, no links). To add more workflows to the test suite, add JSON files under **workflows/** and append their filenames to the `cpu` array in both config files.

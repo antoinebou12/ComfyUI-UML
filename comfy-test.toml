@@ -5,9 +5,9 @@ publish = true
 
 [test.workflows]
 timeout = 300
-# Single minimal workflow: UMLDiagram + UMLViewerURL, no groups. Easy to test.
+# Single diagram-only workflow for CI: one UMLDiagram, no links; avoids graphToPrompt link validation (e.g. on macOS).
 cpu = [
-  "uml_single_node.json",
+  "uml_single_diagram_only.json",
 ]
 
 [test.platforms]

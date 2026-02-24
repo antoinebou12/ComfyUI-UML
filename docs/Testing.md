@@ -9,13 +9,13 @@ CI runs [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to
 The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
 - **[test]** — `levels`: test levels from `syntax` through `install`, `registration`, `instantiation`, `execution`. `publish = true` enables publish checks.
-- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. ComfyUI-UML uses a single minimal workflow (`uml_single_node.json`) for execution tests. That workflow is intentionally one UMLDiagram + one UMLViewerURL with one link to avoid graphToPrompt link validation issues (e.g. `InvalidLinkError: No link found in parent graph`) when the frontend converts the graph.
+- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. ComfyUI-UML uses a single **diagram-only** workflow (`uml_single_diagram_only.json`) for execution tests: one UMLDiagram node, no links. This avoids graphToPrompt link validation issues (e.g. `InvalidLinkError: No link found in parent graph` on macOS) when the frontend converts the graph.
 - The suite runs only diagram-only workflows (Kroki/base64 URL rendering). LLM workflows are not included.
 - **[test.platforms]** — which OSes to run on (linux, macos, windows, windows_portable).
 
 ## Adding workflows to the test suite
 
-1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The default suite uses **uml_single_node.json** (minimal UMLDiagram + UMLViewerURL, no groups).
+1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The default suite uses **uml_single_diagram_only.json** (one UMLDiagram, no links, no groups).
 
 ## Running comfy-test locally
 
