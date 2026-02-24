@@ -3,7 +3,6 @@ UML diagram node: render diagram source to IMAGE + save path.
 """
 
 import io
-import json
 import os
 import time
 
@@ -105,14 +104,6 @@ class UMLDiagram:
                     ["png", "svg", "jpeg", "pdf", "txt", "base64"],
                     {"default": "png"},
                 ),
-                "diagram_options": (
-                    "STRING",
-                    {"default": "", "multiline": False},
-                ),
-                "theme": (
-                    "STRING",
-                    {"default": "", "multiline": False},
-                ),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -146,6 +137,10 @@ class UMLDiagram:
         unique_id=None,
         prompt=None,
     ):
+        if backend in (0, "0"):
+            backend = "web"
+        elif backend in (1, "1"):
+            backend = "local"
         if code_input is not None:
             code = _normalize_to_code(code_input)
         if not (code or "").strip():
@@ -159,17 +154,7 @@ class UMLDiagram:
                 f"Allowed: {', '.join(allowed_formats)}"
             )
 
-        options = None
-        if (diagram_options or "").strip():
-            try:
-                options = json.loads(diagram_options)
-                if not isinstance(options, dict):
-                    options = None
-            except json.JSONDecodeError:
-                options = None
-
-        theme_val = (theme or "").strip() or None
-
+        # theme and diagram_options removed from UI; keep params for backward compatibility with saved workflows
         def _send_progress(value: int, max_val: int = 1) -> None:
             # Progress payload: node is required; prompt_id included when provided by executor (see Messages docs).
             if unique_id is None:
@@ -200,8 +185,8 @@ class UMLDiagram:
                 diagram_source=code,
                 output_format=output_format,
                 backend=backend,
-                theme=theme_val,
-                diagram_options=options,
+                theme=None,
+                diagram_options=None,
             )
         except KrokiError as e:
             raise RuntimeError(f"Kroki error: {e}") from e
@@ -216,7 +201,7 @@ class UMLDiagram:
             diagram_type=diagram_type,
             diagram_source=code,
             output_format=output_format,
-            diagram_options=options,
+            diagram_options=None,
         )
 
         # Save to ComfyUI output directory

@@ -15,7 +15,7 @@ Supported formats per diagram type (matches [Kroki's support](https://docs.kroki
 | erd | ✓ | ✓ | ✓ | ✓ | — | — |
 | excalidraw | — | ✓ | — | — | — | — |
 | graphviz | ✓ | ✓ | ✓ | ✓ | — | — |
-| mermaid | ✓ | ✓ | — | — | — | — |
+| mermaid | ✓ | ✓ | — | — | — | ✓ |
 | nomnoml | — | ✓ | — | — | — | — |
 | nwdiag | ✓ | ✓ | — | ✓ | — | — |
 | packetdiag | ✓ | ✓ | — | ✓ | — | — |

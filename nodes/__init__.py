@@ -15,7 +15,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LLMCall": "LLM Call (OpenAI/Anthropic/Ollama)",
     "LLMPromptEngine": "LLM Prompt Engine",
-    "UMLDiagram": "UML Render (Mermaid/PlantUML/etc)",
+    "UMLDiagram": "UML Render",
     "UMLViewerURL": "Diagram Viewer URL",
 }
 

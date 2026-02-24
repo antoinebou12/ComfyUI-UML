@@ -1,10 +1,12 @@
 """
 Register ComfyUI-UML API route: POST /comfyui-uml/save to save diagram from viewer to output/uml/.
 Also: POST /comfyui-uml/ollama/get_models to list Ollama models at a given URL.
+GET /comfyui-uml/proxy?url=... to proxy diagram URLs (e.g. Kroki) and avoid CORS.
 """
 
 import os
 import time
+from urllib.parse import urlparse
 
 try:
     from server import PromptServer
@@ -22,8 +24,9 @@ ALLOWED_MIME = frozenset({"image/png", "image/svg+xml", "image/jpeg"})
 MIME_TO_EXT = {"image/png": "png", "image/svg+xml": "svg", "image/jpeg": "jpeg"}
 MAX_FILENAME_LEN = 200
 OLLAMA_GET_MODELS_DEFAULT_URL = "http://127.0.0.1:11434"
-MIME_TO_EXT = {"image/png": "png", "image/svg+xml": "svg", "image/jpeg": "jpeg"}
-MAX_FILENAME_LEN = 200
+# Allowed hostnames for the diagram proxy (avoids open redirect / SSRF).
+PROXY_ALLOWED_NETLOCS = frozenset({"kroki.io", "www.kroki.io"})
+PROXY_TIMEOUT = 30.0
 
 
 def _get_uml_output_dir():
@@ -136,6 +139,38 @@ async def _save_diagram_handler(request):
     return web.json_response({"path": filepath, "filename": safe_name, "relative": rel_path})
 
 
+async def _proxy_diagram_handler(request):
+    """GET /comfyui-uml/proxy?url=<encoded_diagram_url>. Fetches the URL server-side and returns the body with Content-Type to avoid CORS."""
+    if request.method != "GET":
+        return web.json_response({"error": "Method not allowed"}, status=405)
+    if httpx is None:
+        return web.json_response({"error": "Proxy requires httpx"}, status=503)
+    raw = request.query.get("url") or ""
+    raw = raw.strip()
+    if not raw:
+        return web.json_response({"error": "Missing url query parameter"}, status=400)
+    try:
+        parsed = urlparse(raw)
+    except Exception:
+        return web.json_response({"error": "Invalid url"}, status=400)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return web.json_response({"error": "url must be http or https"}, status=400)
+    netloc = parsed.netloc.lower().split(":")[0]
+    if netloc not in PROXY_ALLOWED_NETLOCS:
+        return web.json_response({"error": "Proxy only allows kroki.io"}, status=403)
+    try:
+        async with httpx.AsyncClient(timeout=PROXY_TIMEOUT, follow_redirects=True) as client:
+            r = await client.get(raw)
+            r.raise_for_status()
+            body = r.content
+            content_type = (r.headers.get("content-type") or "application/octet-stream").split(";")[0].strip()
+    except httpx.HTTPStatusError as e:
+        return web.Response(status=e.response.status_code, text=e.response.text)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=502)
+    return web.Response(body=body, content_type=content_type)
+
+
 def register_routes():
     if PromptServer is None or web is None:
         return
@@ -148,5 +183,6 @@ def register_routes():
             return
         routes.post("/comfyui-uml/save")(_save_diagram_handler)
         routes.post("/comfyui-uml/ollama/get_models")(_ollama_get_models_handler)
+        routes.get("/comfyui-uml/proxy")(_proxy_diagram_handler)
     except Exception:
         pass

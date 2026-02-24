@@ -4,7 +4,9 @@
 
 Load from ComfyUI (**Load** → choose file) or open the JSON:
 
-- **uml_single_node.json** — Minimal workflow: one UMLDiagram node plus UMLViewerURL. No groups; easy to test and load.
+- **uml_single_diagram_only.json** — One UMLDiagram node, no links. Used for CI execution tests.
+- **uml_single_node.json** — Minimal workflow: one UMLDiagram node plus UMLViewerURL (kroki_url only). No groups; easy to test and load.
+- **uml_mermaid.json** — One UMLDiagram (Mermaid) plus UMLViewerURL (kroki_url only). Example per diagram type.
 
 ## Loading workflows
 

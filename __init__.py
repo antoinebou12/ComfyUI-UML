@@ -21,13 +21,27 @@ except ImportError:
 
 import os
 import sys
+import importlib.util
 
-# Ensure plugin root is on path for kroki_client
+# Ensure plugin root is on path for other imports (e.g. kroki_client)
 _plugin_root = os.path.dirname(os.path.abspath(__file__))
 if _plugin_root not in sys.path:
     sys.path.insert(0, _plugin_root)
 
-from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+# Load our nodes package explicitly so we never pick up ComfyUI's core "nodes" module.
+# ComfyUI may load this __init__.py via importlib from file, so relative imports can fail;
+# and sys.modules["nodes"] is already ComfyUI's nodes. Use a unique module name.
+_nodes_pkg_path = os.path.join(_plugin_root, "nodes", "__init__.py")
+_nodes_spec = importlib.util.spec_from_file_location(
+    "comfyui_uml_nodes",
+    _nodes_pkg_path,
+    submodule_search_locations=[os.path.join(_plugin_root, "nodes")],
+)
+_uml_nodes = importlib.util.module_from_spec(_nodes_spec)
+sys.modules["comfyui_uml_nodes"] = _uml_nodes
+_nodes_spec.loader.exec_module(_uml_nodes)
+NODE_CLASS_MAPPINGS = _uml_nodes.NODE_CLASS_MAPPINGS
+NODE_DISPLAY_NAME_MAPPINGS = _uml_nodes.NODE_DISPLAY_NAME_MAPPINGS
 
 # Generate visibility mappings for comfy-dynamic-widgets (optional)
 try:
@@ -44,7 +58,7 @@ WEB_DIRECTORY = "./web"
 
 # Register API route for viewer "Save to ComfyUI" (writes to output/uml/)
 try:
-    from .nodes.uml_routes import register_routes
+    from comfyui_uml_nodes.uml_routes import register_routes
 
     register_routes()
 except Exception:

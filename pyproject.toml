@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-uml"
-version = "0.1.6"
+version = "0.1.7"
 description = "Render Mermaid, PlantUML, Graphviz, D2 and 28 Kroki diagram types as PNG/SVG/PDF in ComfyUI. Uses the Kroki API (no local setup) or optional local Mermaid/Graphviz. Includes a built-in zoomable viewer (Save to ComfyUI, shareable URLs), optional cairosvg for in-node SVG/PNG preview, and LLM Prompt Engine + LLM Call nodes to generate diagram code from templates."
 readme = "README.md"
 license = { text = "MIT" }
@@ -23,6 +23,8 @@ svg-preview = ["cairosvg>=2.7"]
 dynamic-widgets = ["comfy-dynamic-widgets>=0.1.6"]
 dev = [
     "pre-commit>=3.6.0",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
     "ruff>=0.8.0",
 ]
 
@@ -30,6 +32,11 @@ dev = [
 Repository = "https://github.com/antoinebou12/ComfyUI-UML"
 Documentation = "https://github.com/antoinebou12/ComfyUI-UML#readme"
 "Bug Tracker" = "https://github.com/antoinebou12/ComfyUI-UML/issues"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
 
 [tool.ruff]
 target-version = "py310"

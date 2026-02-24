@@ -1,7 +1,7 @@
 """
-Viewer URL node: build the diagram viewer page URL from kroki_url or content_for_viewer.
-Add this node to a workflow and connect the UML Diagram kroki_url (or content_for_viewer)
-to get a string you can open in the browser or pass to other nodes.
+Diagram Viewer URL node: builds the viewer URL from kroki_url only.
+Add this node and connect the UML Diagram kroki_url output to get
+viewer_url and viewer_url_iframe strings for the browser or other nodes.
 """
 
 from urllib.parse import quote
@@ -10,7 +10,7 @@ VIEWER_PATH = "/extensions/ComfyUI-UML/viewer.html"
 
 
 def _normalize_url(value: object) -> str:
-    """Normalize input to a single URL string (kroki URL or data URL for SVG)."""
+    """Normalize input to a single URL string (kroki URL)."""
     if value is None:
         return ""
     if isinstance(value, str):
@@ -26,7 +26,7 @@ def _normalize_url(value: object) -> str:
 
 
 class UMLViewerURL:
-    """Build the diagram viewer page URL from kroki_url or content_for_viewer."""
+    """Build the diagram viewer page URL from kroki_url only."""
 
     CATEGORY = "UML"
     SEARCH_ALIASES = ["uml", "viewer", "kroki", "diagram", "open viewer"]
@@ -41,19 +41,17 @@ class UMLViewerURL:
             "required": {},
             "optional": {
                 "kroki_url": ("STRING", {"default": ""}),
-                "content_for_viewer": ("STRING", {"default": ""}),
             },
             "hidden": {},
         }
 
-    def run(self, kroki_url: str = "", content_for_viewer: str = ""):
-        # Prefer linked kroki_url, then content_for_viewer (can be SVG data URL or path), then widget
-        url = _normalize_url(kroki_url) or _normalize_url(content_for_viewer)
+    def run(self, kroki_url: str = ""):
+        url = _normalize_url(kroki_url)
         if not url:
             viewer_url = VIEWER_PATH
             viewer_url_iframe = VIEWER_PATH + "?embed=1"
         else:
-            # Infer format from URL so the viewer loads only the needed view module (svg, png, or txt)
+            # Format inference aligned with web/viewerUrlUtils.mjs (formatFromUrl).
             url_lower = url.lower()
             if "image/svg+xml" in url_lower or "/svg/" in url_lower:
                 format_param = "svg"
@@ -62,7 +60,7 @@ class UMLViewerURL:
             elif "/txt/" in url_lower:
                 format_param = "txt"
             else:
-                format_param = "svg"  # default for data URLs or unknown paths
+                format_param = "svg"
             q = "url=" + quote(url, safe="") + "&format=" + format_param
             viewer_url = VIEWER_PATH + "?" + q
             viewer_url_iframe = VIEWER_PATH + "?embed=1&" + q

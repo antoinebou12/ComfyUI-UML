@@ -3,6 +3,12 @@
  * and runs pan/zoom, crop, toolbar, save. Supports svg, png, txt, base64, iframe, markdown.
  */
 import { getViewDescriptor } from "./views/view_manifest.js";
+import { formatFromUrl } from "./viewerUrlUtils.mjs";
+
+/** Return a clean error message string from any thrown value. */
+function errMsg(e) {
+  return (e && e.message) ? e.message : String(e);
+}
 
 function getUrlParam(name) {
   const params = new URLSearchParams(window.location.search);
@@ -32,6 +38,8 @@ const saveCropComfyBtn = document.getElementById("save-crop-comfy");
 const zoomToSelectionBtn = document.getElementById("zoom-to-selection");
 const copyImageBtn = document.getElementById("copy-image");
 const cropOverlay = document.getElementById("crop-overlay");
+const urlInput = document.getElementById("url-input");
+const urlViewBtn = document.getElementById("url-view-btn");
 
 let krokiUrl = "";
 let currentBlob = null;
@@ -291,7 +299,22 @@ function saveBlobToComfyUI(blob, filename, buttonEl, successMessage) {
   const formData = new FormData();
   formData.append("file", blob, filename);
   fetch("/comfyui-uml/save", { method: "POST", body: formData })
-    .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+    .then(function (res) {
+      return res.text().then(function (text) {
+        let data;
+        const trimmed = (text || "").trim();
+        if (trimmed === "") {
+          data = { error: "Empty response" };
+        } else {
+          try {
+            data = JSON.parse(trimmed);
+          } catch (e) {
+            data = { error: "Invalid response from server" };
+          }
+        }
+        return { ok: res.ok, data: data };
+      });
+    })
     .then(function (result) {
       buttonEl.disabled = false;
       if (result.ok) {
@@ -444,6 +467,7 @@ copyImageBtn.addEventListener("click", function () {
       .catch(function () {
         showSaveStatus("Paste from the downloaded image if copy failed", true);
       });
+  });
 });
 
 zoomToSelectionBtn.addEventListener("click", function () {
@@ -540,6 +564,77 @@ function enableToolbarAfterRender(isImageFormat, isSaveableFile) {
   if (isEmbed) requestAnimationFrame(fitToView);
 }
 
+function decodeDataUrlPayload(header, payload) {
+  const lower = header.toLowerCase();
+  if (lower.includes("base64")) {
+    try {
+      const binary = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return { bytes };
+    } catch (e) {
+      return null;
+    }
+  }
+  try {
+    return { text: decodeURIComponent(payload) };
+  } catch (e) {
+    return { text: payload };
+  }
+}
+
+function parseDataUrl(url) {
+  if (!url || !url.startsWith("data:")) return null;
+  const comma = url.indexOf(",");
+  if (comma === -1) return { error: "invalid" };
+  const header = url.slice(0, comma).toLowerCase();
+  const payload = url.slice(comma + 1);
+  const decoded = decodeDataUrlPayload(url.slice(0, comma), payload);
+  if (!decoded) return { error: "invalid_base64" };
+  if (header.includes("image/svg+xml")) {
+    const svgText = decoded.bytes ? new TextDecoder().decode(decoded.bytes) : (decoded.text || "");
+    return {
+      format: "svg",
+      data: svgText,
+      blob: new Blob([svgText], { type: "image/svg+xml" }),
+      clearKrokiUrl: true,
+    };
+  }
+  if (header.includes("image/png") || header.includes("image/jpeg")) {
+    if (!decoded.bytes) return { error: "unsupported" };
+    const mime = header.includes("image/png") ? "image/png" : "image/jpeg";
+    const blob = new Blob([decoded.bytes], { type: mime });
+    return {
+      format: mime === "image/png" ? "png" : "jpeg",
+      data: blob,
+      blob,
+      clearKrokiUrl: false,
+    };
+  }
+  if (header.includes("text/plain")) {
+    const text = decoded.bytes ? new TextDecoder().decode(decoded.bytes) : (decoded.text || "");
+    return { format: "txt", data: text, clearKrokiUrl: false };
+  }
+  if (header.includes("text/markdown")) {
+    const md = decoded.bytes ? new TextDecoder().decode(decoded.bytes) : (decoded.text || "");
+    return { format: "markdown", data: md, clearKrokiUrl: false };
+  }
+  return { error: "unsupported" };
+}
+
+async function renderWithView(contentEl, format, data, options) {
+  const opts = options || {};
+  const descriptor = getViewDescriptor(format);
+  const view = await descriptor.load();
+  const renderResult = view.render(contentEl, data);
+  if (renderResult && typeof renderResult.then === "function") await renderResult;
+  if (opts.blob != null) currentBlob = opts.blob;
+  else if (format === "svg" && typeof data === "string") currentBlob = new Blob([data], { type: "image/svg+xml" });
+  else if ((format === "png" || format === "jpeg") && data instanceof Blob) currentBlob = data;
+  if (opts.clearKrokiUrl) krokiUrl = "";
+  enableToolbarAfterRender(opts.isImageFormat === true, opts.isSaveableFile === true);
+}
+
 async function loadDiagram(url) {
   const formatFromQuery = getUrlParam("format");
   krokiUrl = url;
@@ -554,125 +649,52 @@ async function loadDiagram(url) {
   updateCropUI();
 
   if (url.startsWith("data:")) {
-    const comma = url.indexOf(",");
-    if (comma === -1) {
-      showMessage("Invalid data URL.", true);
+    const parsed = parseDataUrl(url);
+    if (parsed && parsed.error) {
+      if (parsed.error === "invalid") showMessage("Invalid data URL.", true);
+      else if (parsed.error === "invalid_base64") showMessage("Invalid base64 in data URL.", true);
+      else showMessage("Data URL must be image/svg+xml, image/png, text/plain, or text/markdown.", true);
       return;
     }
-    const header = url.slice(0, comma).toLowerCase();
-    const payload = url.slice(comma + 1);
-    if (header.includes("image/svg+xml")) {
-      currentFormat = "svg";
-      let svgText = "";
-      if (header.includes("base64")) {
-        try {
-          svgText = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-        } catch (e) {
-          showMessage("Invalid base64 in data URL.", true);
-          return;
-        }
-      } else {
-        try {
-          svgText = decodeURIComponent(payload);
-        } catch (e) {
-          svgText = payload;
-        }
-      }
-      hideMessage();
-      const descriptor = getViewDescriptor(currentFormat);
-      const view = await descriptor.load();
-      const renderResult = view.render(content, svgText);
-      if (renderResult && typeof renderResult.then === "function") await renderResult;
-      currentBlob = new Blob([svgText], { type: "image/svg+xml" });
-      krokiUrl = "";
-      copyLinkBtn.disabled = true;
-      enableToolbarAfterRender(true);
+    if (!parsed) {
+      showMessage("Data URL must be image/svg+xml, image/png, text/plain, or text/markdown.", true);
       return;
     }
-    if (header.includes("image/png") || header.includes("image/jpeg")) {
-      try {
-        const binary = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const mime = header.includes("image/png") ? "image/png" : "image/jpeg";
-        const blob = new Blob([bytes], { type: mime });
-        currentFormat = mime === "image/png" ? "png" : "jpeg";
-        hideMessage();
-        const descriptor = getViewDescriptor(currentFormat);
-        const view = await descriptor.load();
-        const renderResult = view.render(content, blob);
-        if (renderResult && typeof renderResult.then === "function") await renderResult;
-        currentBlob = blob;
-        enableToolbarAfterRender(true);
-      } catch (e) {
-        showMessage("Invalid base64 in data URL.", true);
-      }
-      return;
-    }
-    if (header.includes("text/plain")) {
-      let text = "";
-      if (header.includes("base64")) {
-        try {
-          text = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-        } catch (e) {
-          showMessage("Invalid base64 in data URL.", true);
-          return;
-        }
-      } else {
-        try {
-          text = decodeURIComponent(payload);
-        } catch (e) {
-          text = payload;
-        }
-      }
-      currentFormat = "txt";
-      hideMessage();
-      const descriptor = getViewDescriptor("txt");
-      const view = await descriptor.load();
-      const renderResult = view.render(content, text);
-      if (renderResult && typeof renderResult.then === "function") await renderResult;
-      enableToolbarAfterRender(false);
-      return;
-    }
-    if (header.includes("text/markdown")) {
-      let md = "";
-      if (header.includes("base64")) {
-        try {
-          md = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-        } catch (e) {
-          showMessage("Invalid base64 in data URL.", true);
-          return;
-        }
-      } else {
-        try {
-          md = decodeURIComponent(payload);
-        } catch (e) {
-          md = payload;
-        }
-      }
-      currentFormat = "markdown";
-      hideMessage();
-      const descriptor = getViewDescriptor("markdown");
-      const view = await descriptor.load();
-      const renderResult = view.render(content, md);
-      if (renderResult && typeof renderResult.then === "function") await renderResult;
-      enableToolbarAfterRender(false);
-      return;
-    }
-    showMessage("Data URL must be image/svg+xml, image/png, text/plain, or text/markdown.", true);
+    currentFormat = parsed.format;
+    hideMessage();
+    await renderWithView(content, parsed.format, parsed.data, {
+      isImageFormat: parsed.format === "svg" || parsed.format === "png" || parsed.format === "jpeg",
+      blob: parsed.blob,
+      clearKrokiUrl: parsed.clearKrokiUrl,
+    });
     return;
   }
 
   const formatParam = formatFromQuery ? formatFromQuery.toLowerCase().trim() : "";
 
+  if (
+    formatParam === "svg" &&
+    !url.startsWith("data:") &&
+    !url.startsWith("http://") &&
+    !url.startsWith("https://")
+  ) {
+    const trimmed = url.trim();
+    if (trimmed.toLowerCase().startsWith("<?xml") || trimmed.toLowerCase().startsWith("<svg")) {
+      currentFormat = "svg";
+      hideMessage();
+      await renderWithView(content, "svg", trimmed, {
+        isImageFormat: true,
+        blob: new Blob([trimmed], { type: "image/svg+xml" }),
+        clearKrokiUrl: true,
+      });
+      return;
+    }
+  }
+
   if (formatParam === "iframe") {
     currentFormat = "iframe";
     hideMessage();
-    const descriptor = getViewDescriptor("iframe");
-    const view = await descriptor.load();
-    const renderResult = view.render(content, url);
-    if (renderResult && typeof renderResult.then === "function") await renderResult;
-    enableToolbarAfterRender(false);
+    await renderWithView(content, "iframe", url, { isImageFormat: false });
     return;
   }
 
@@ -697,36 +719,45 @@ async function loadDiagram(url) {
     if (markdownContent != null && markdownContent !== "") {
       currentFormat = "markdown";
       hideMessage();
-      const descriptor = getViewDescriptor("markdown");
-      const view = await descriptor.load();
-      const renderResult = view.render(content, markdownContent);
-      if (renderResult && typeof renderResult.then === "function") await renderResult;
-      enableToolbarAfterRender(false);
+      await renderWithView(content, "markdown", markdownContent, { isImageFormat: false });
       return;
     }
   }
 
-  currentFormat = formatParam || (url.indexOf("/svg/") !== -1 ? "svg" : "png");
+  currentFormat = formatParam || formatFromUrl(url);
   showMessage("Loading…", false);
 
+  let res;
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    res = await fetch(url);
+  } catch (directErr) {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      try {
+        res = await fetch("/comfyui-uml/proxy?url=" + encodeURIComponent(url));
+      } catch (proxyErr) {
+        showMessage("Failed to load diagram: " + errMsg(directErr) + " (proxy also failed: " + errMsg(proxyErr) + ")", true);
+        return;
+      }
+    } else {
+      showMessage("Failed to load diagram: " + errMsg(directErr), true);
+      return;
+    }
+  }
+  if (!res.ok) {
+    showMessage("Failed to load diagram: HTTP " + res.status, true);
+    return;
+  }
 
+  try {
     if (currentFormat === "txt") {
       const text = await res.text();
       hideMessage();
-      const descriptor = getViewDescriptor("txt");
-      const view = await descriptor.load();
-      const renderResult = view.render(content, text);
-      if (renderResult && typeof renderResult.then === "function") await renderResult;
-      enableToolbarAfterRender(false);
+      await renderWithView(content, "txt", text, { isImageFormat: false });
       return;
     }
 
     if (currentFormat === "base64") {
       const b64Text = await res.text();
-      hideMessage();
       let bytes;
       try {
         const binary = atob(b64Text.trim().replace(/-/g, "+").replace(/_/g, "/"));
@@ -736,57 +767,40 @@ async function loadDiagram(url) {
         showMessage("Invalid base64 response.", true);
         return;
       }
+      hideMessage();
+      // Detect image type from magic bytes; pass blob via opts so renderWithView sets currentBlob
       const isPng = bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e;
-      const start = bytes.length >= 5 ? String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]) : "";
-      const isSvg = start === "<?xml" || (bytes.length >= 4 && bytes[0] === 0x3c && bytes[1] === 0x73 && bytes[2] === 0x76 && bytes[3] === 0x67);
+      const isSvg = (bytes.length >= 5 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]) === "<?xml")
+        || (bytes.length >= 4 && bytes[0] === 0x3c && bytes[1] === 0x73 && bytes[2] === 0x76 && bytes[3] === 0x67);
       if (isPng) {
         const blob = new Blob([bytes], { type: "image/png" });
-        currentBlob = blob;
-        const descriptor = getViewDescriptor("png");
-        const view = await descriptor.load();
-        const renderResult = view.render(content, blob);
-        if (renderResult && typeof renderResult.then === "function") await renderResult;
-        enableToolbarAfterRender(true);
+        await renderWithView(content, "png", blob, { isImageFormat: true, blob });
         return;
       }
       if (isSvg) {
-        const svgText = new TextDecoder().decode(bytes);
-        currentBlob = new Blob([bytes], { type: "image/svg+xml" });
-        const descriptor = getViewDescriptor("svg");
-        const view = await descriptor.load();
-        const renderResult = view.render(content, svgText);
-        if (renderResult && typeof renderResult.then === "function") await renderResult;
-        enableToolbarAfterRender(true);
+        const svgBlob = new Blob([bytes], { type: "image/svg+xml" });
+        await renderWithView(content, "svg", new TextDecoder().decode(bytes), { isImageFormat: true, blob: svgBlob });
         return;
       }
-      const descriptor = getViewDescriptor("base64");
-      const view = await descriptor.load();
-      const renderResult = view.render(content, new TextDecoder().decode(bytes));
-      if (renderResult && typeof renderResult.then === "function") await renderResult;
-      enableToolbarAfterRender(false);
+      await renderWithView(content, "base64", new TextDecoder().decode(bytes), { isImageFormat: false });
       return;
     }
 
     const data = currentFormat === "svg" ? await res.text() : await res.blob();
     hideMessage();
-    const descriptor = getViewDescriptor(currentFormat);
-    const view = await descriptor.load();
-    const renderResult = view.render(content, data);
-    if (renderResult && typeof renderResult.then === "function") await renderResult;
-    if (currentFormat === "svg") {
-      currentBlob = new Blob([data], { type: "image/svg+xml" });
-    } else {
-      currentBlob = data;
-    }
-    const isImage = currentFormat === "svg" || currentFormat === "png" || currentFormat === "jpeg";
-    enableToolbarAfterRender(isImage, currentFormat === "pdf");
+    await renderWithView(content, currentFormat, data, {
+      isImageFormat: currentFormat === "svg" || currentFormat === "png" || currentFormat === "jpeg",
+      isSaveableFile: currentFormat === "pdf",
+      blob: currentFormat === "svg" ? new Blob([data], { type: "image/svg+xml" }) : data,
+    });
   } catch (err) {
-    showMessage("Failed to load diagram: " + err.message + ". If the Kroki URL is from another origin, try opening it in a new tab.", true);
+    showMessage("Failed to render diagram: " + errMsg(err), true);
   }
 }
 
 const url = getUrlParam("url");
 if (url) {
+  showMessage("Loading…", false);
   (async function () {
     try {
       const decoded = decodeURIComponent(url);
@@ -794,5 +808,37 @@ if (url) {
     } catch (e) {
       await loadDiagram(url);
     }
-  })();
+  })().catch(function (err) {
+    showMessage("Failed to load: " + errMsg(err), true);
+  });
 }
+
+function loadFromUrlInput() {
+  const raw = urlInput && urlInput.value ? urlInput.value.trim() : "";
+  if (!raw) return;
+  const params = new URLSearchParams(window.location.search);
+  params.set("url", raw);
+  const newSearch = "?" + params.toString();
+  if (window.location.search !== newSearch) {
+    history.replaceState(null, "", window.location.pathname + newSearch + (window.location.hash || ""));
+  }
+  showMessage("Loading…", false);
+  loadDiagram(raw).catch(function (err) {
+    showMessage("Failed to load: " + errMsg(err), true);
+  });
+}
+
+if (urlViewBtn && urlInput) {
+  urlViewBtn.addEventListener("click", loadFromUrlInput);
+  urlInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") loadFromUrlInput();
+  });
+  if (url) {
+    try {
+      urlInput.value = decodeURIComponent(url);
+    } catch (_) {
+      urlInput.value = url;
+    }
+  }
+}
+

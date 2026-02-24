@@ -4,9 +4,8 @@ Single pipeline for workflow generation, normalization, viewer injection, and fo
 Default (no subcommand): full pipeline — generate workflows, normalize, add viewer to
 non-CPU workflows, normalize again, then check that web/ComfyUI-UML.js SUPPORTED_FORMATS
 matches nodes/kroki_client.py. All workflow JSON is written with indent=2 and trailing
-newline. Exits 1 if formats are out of sync. The generate step also produces
-uml_viewer_formats_test.json for testing the diagram viewer with multiple output formats
-(URL, PNG, SVG, PDF, TXT).
+newline. Exits 1 if formats are out of sync. The generate step produces only the
+reduced set: uml_single_diagram_only.json, uml_single_node.json, uml_mermaid.json.
 
   python scripts/generate_all_diagrams_workflow.py
 
@@ -800,6 +799,68 @@ def _build_uml_single_node_workflow() -> dict:
     })
 
 
+def _build_uml_mermaid_workflow() -> dict:
+    """Build uml_mermaid.json: one UMLDiagram (mermaid) + one UMLViewerURL, kroki_url only."""
+    mermaid_idx = DIAGRAM_TYPES.index("mermaid")
+    mermaid_code = get_default_code("mermaid")
+    fmt_idx = format_string_to_widget_index("mermaid", "svg")
+
+    outputs_template = [
+        {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+    ]
+    outputs = [dict(o) for o in outputs_template]
+    outputs[2]["links"] = [1]
+
+    nodes = [
+        {
+            "id": 1,
+            "type": "UMLDiagram",
+            "class_type": "UMLDiagram",
+            "pos": [100, 100],
+            "size": [400, 300],
+            "flags": {},
+            "order": 0,
+            "mode": 0,
+            "outputs": outputs,
+            "properties": {"Node name for S/R": "UMLDiagram"},
+            "widgets_values": [0, "https://kroki.io", mermaid_idx, mermaid_code, fmt_idx],
+            "inputs": [],
+        },
+        {
+            "id": 2,
+            "type": "UMLViewerURL",
+            "class_type": "UMLViewerURL",
+            "pos": [100, 420],
+            "size": [280, 80],
+            "flags": {},
+            "order": 1,
+            "mode": 0,
+            "outputs": [
+                {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+            ],
+            "properties": {"Node name for S/R": "UMLViewerURL"},
+            "widgets_values": [],
+            "inputs": [{"name": "kroki_url", "type": "STRING", "link": 1}],
+        },
+    ]
+    links = [
+        {"id": 1, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 0, "type": "STRING"},
+    ]
+    return normalize({
+        "lastNodeId": 2,
+        "lastLinkId": 1,
+        "nodes": nodes,
+        "links": links,
+        "groups": [],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    })
+
+
 def _build_uml_single_node_multi_workflow() -> dict:
     """Build uml_single_node_multi.json: blockdiag SVG, blockdiag PNG, plantuml TXT, each with a viewer.
     Tests viewer with URL, SVG, PNG, and TXT formats. Not used in CI cpu list (multi-link validation issues)."""
@@ -1053,45 +1114,6 @@ def run_generate() -> int:
         return 1
     workflows_dir = root / "workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
-    outputs = [
-        {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
-        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
-        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
-    ]
-    nodes = []
-    for i, dtype in enumerate(DIAGRAM_TYPES):
-        code = get_default_code(dtype)
-        fmt_idx = format_index(dtype)
-        col, row = i % 4, i // 4
-        x, y = 100 + col * 420, 100 + row * 320
-        nodes.append(
-            {
-                "id": i + 1,
-                "type": "UMLDiagram",
-                "class_type": "UMLDiagram",
-                "pos": [x, y],
-                "size": [400, 300],
-                "flags": {},
-                "order": i,
-                "mode": 0,
-                "outputs": list(outputs),
-                "properties": {"Node name for S/R": "UMLDiagram"},
-                "widgets_values": [0, "https://kroki.io", i, code, fmt_idx],
-            }
-        )
-        per_type = normalize(build_single_node_workflow(dtype, i))
-        out_per = workflows_dir / f"uml_{dtype}.json"
-        _write_workflow_json(out_per, per_type)
-        logger.info("Wrote %s", out_per)
-
-    # Single-node multi-format test: blockdiag SVG/PNG, plantuml TXT, each with viewer (URL, svg, png, txt)
-    uml_single_node_wf = _build_uml_single_node_workflow()
-    _write_workflow_json(workflows_dir / "uml_single_node.json", uml_single_node_wf)
-    logger.info("Wrote %s", workflows_dir / "uml_single_node.json")
-
-    uml_single_node_multi_wf = _build_uml_single_node_multi_workflow()
-    _write_workflow_json(workflows_dir / "uml_single_node_multi.json", uml_single_node_multi_wf)
-    logger.info("Wrote %s", workflows_dir / "uml_single_node_multi.json")
 
     # Diagram-only workflow for CI: one UMLDiagram, no links; avoids graphToPrompt link validation on macOS.
     blockdiag_idx = DIAGRAM_TYPES.index("blockdiag")
@@ -1099,45 +1121,15 @@ def run_generate() -> int:
     _write_workflow_json(workflows_dir / "uml_single_diagram_only.json", uml_single_diagram_only_wf)
     logger.info("Wrote %s", workflows_dir / "uml_single_diagram_only.json")
 
-    groups = [
-        {
-            "title": "UML (PlantUML, Mermaid, GraphViz, D2, ERD, Nomnoml, UMLet)",
-            "nodes": [17, 12, 11, 6, 9, 13, 24],
-        },
-        {"title": "Block / Sequence diagrams", "nodes": [1, 2, 19, 14, 15, 18]},
-        {"title": "Data (DBML, Vega, Vega-Lite, WaveDrom)", "nodes": [7, 25, 26, 27]},
-        {
-            "title": "Other (BPMN, Bytefield, C4, Ditaa, Excalidraw, Pikchr, Structurizr, Svgbob, Symbolator, TikZ, WireViz)",
-            "nodes": [3, 4, 5, 8, 10, 16, 20, 21, 22, 23, 28],
-        },
-    ]
-    wf = normalize(
-        {
-            "lastNodeId": 28,
-            "lastLinkId": 0,
-            "nodes": nodes,
-            "links": [],
-            "groups": groups,
-            "config": {},
-            "extra": {},
-            "version": 0.4,
-        }
-    )
-    out_all = workflows_dir / "uml_all_diagrams.json"
-    _write_workflow_json(out_all, wf)
-    logger.info("Wrote %s", out_all)
+    # Minimal workflow: one UMLDiagram (blockdiag) + one UMLViewerURL, kroki_url only.
+    uml_single_node_wf = _build_uml_single_node_workflow()
+    _write_workflow_json(workflows_dir / "uml_single_node.json", uml_single_node_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_single_node.json")
 
-    # Viewer formats test: multiple output formats (URL, PNG, SVG, PDF, TXT) for the diagram viewer
-    viewer_formats_wf = _build_viewer_formats_test_workflow()
-    out_viewer_formats = workflows_dir / "uml_viewer_formats_test.json"
-    _write_workflow_json(out_viewer_formats, viewer_formats_wf)
-    logger.info("Wrote %s", out_viewer_formats)
-
-    # Write LLM Ollama workflow to workflows/
-    llm_ollama = _build_llm_ollama_workflow()
-    out_ollama = workflows_dir / "llm_ollama.json"
-    _write_workflow_json(out_ollama, llm_ollama)
-    logger.info("Wrote %s", out_ollama)
+    # Mermaid example: one UMLDiagram (mermaid) + one UMLViewerURL, kroki_url only.
+    uml_mermaid_wf = _build_uml_mermaid_workflow()
+    _write_workflow_json(workflows_dir / "uml_mermaid.json", uml_mermaid_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_mermaid.json")
     return 0
 
 

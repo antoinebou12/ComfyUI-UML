@@ -67,7 +67,7 @@ SUPPORTED_FORMATS: dict[str, list[str]] = {
     "erd": ["png", "svg", "jpeg", "pdf"],
     "excalidraw": ["svg"],
     "graphviz": ["png", "svg", "pdf", "jpeg"],
-    "mermaid": ["svg", "png"],
+    "mermaid": ["svg", "png", "base64"],
     "nomnoml": ["svg"],
     "nwdiag": ["png", "svg", "pdf"],
     "packetdiag": ["png", "svg", "pdf"],

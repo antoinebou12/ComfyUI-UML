@@ -4,9 +4,30 @@
  * For image blobs the shell may call png/svg view instead; this view handles
  * string (base64 or decoded text) and displays image when possible or text.
  */
-export function render(container, data) {
-  if (!container) return Promise.resolve();
 
+/** Append SVG text to viewport: parse and append SVG element or pre fallback. */
+function _appendSvgOrFallback(viewport, svgText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgText, "image/svg+xml");
+  const svg = doc.documentElement;
+  if (svg && svg.tagName && svg.tagName.toLowerCase() === "svg") {
+    viewport.appendChild(svg);
+  } else {
+    const pre = document.createElement("pre");
+    pre.style.cssText =
+      "margin:0; padding:16px; white-space:pre-wrap; color:var(--comfy-text,#AAA); font-size:13px;";
+    pre.textContent = svgText;
+    viewport.appendChild(pre);
+  }
+}
+
+/** Render SVG blob into viewport (async). */
+function _renderSvgBlobToViewport(viewport, blob) {
+  return blob.text().then((svgText) => _appendSvgOrFallback(viewport, svgText));
+}
+
+/** Create a viewport+layer wrapper and attach to container, returning the viewport element. */
+function _buildContainer(container) {
   const viewport = document.createElement("div");
   viewport.className = "viewport";
   const layer = document.createElement("div");
@@ -14,24 +35,17 @@ export function render(container, data) {
   layer.appendChild(viewport);
   container.innerHTML = "";
   container.appendChild(layer);
+  return viewport;
+}
+
+export function render(container, data) {
+  if (!container) return Promise.resolve();
+
+  const viewport = _buildContainer(container);
 
   if (data instanceof Blob) {
-    const isSvg = data.type === "image/svg+xml";
-    if (isSvg) {
-      return data.text().then((svgText) => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgText, "image/svg+xml");
-        const svg = doc.documentElement;
-        if (svg && svg.tagName && svg.tagName.toLowerCase() === "svg") {
-          viewport.appendChild(svg);
-          return Promise.resolve();
-        }
-        const pre = document.createElement("pre");
-        pre.style.cssText =
-          "margin:0; padding:16px; white-space:pre-wrap; color:var(--comfy-text,#AAA); font-size:13px;";
-        pre.textContent = svgText;
-        viewport.appendChild(pre);
-      });
+    if (data.type === "image/svg+xml") {
+      return _renderSvgBlobToViewport(viewport, data);
     }
     const img = document.createElement("img");
     img.alt = "Diagram";
@@ -48,6 +62,7 @@ export function render(container, data) {
     const looksLikeBase64 = /^[A-Za-z0-9+/=_-]+$/.test(trimmed) && trimmed.length >= 4;
     let decoded = "";
     let blob = null;
+
     if (looksLikeBase64) {
       try {
         const binary = atob(trimmed.replace(/-/g, "+").replace(/_/g, "/"));
@@ -75,20 +90,7 @@ export function render(container, data) {
 
     if (blob) {
       if (blob.type === "image/svg+xml") {
-        return blob.text().then((svgText) => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(svgText, "image/svg+xml");
-          const svg = doc.documentElement;
-          if (svg && svg.tagName && svg.tagName.toLowerCase() === "svg") {
-            viewport.appendChild(svg);
-            return;
-          }
-          const pre = document.createElement("pre");
-          pre.style.cssText =
-            "margin:0; padding:16px; white-space:pre-wrap; color:var(--comfy-text,#AAA); font-size:13px;";
-          pre.textContent = svgText;
-          viewport.appendChild(pre);
-        });
+        return _renderSvgBlobToViewport(viewport, blob);
       }
       const img = document.createElement("img");
       img.alt = "Diagram";

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>viewerUrlUtils tests</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 1rem; }
+    .pass { color: green; }
+    .fail { color: red; }
+    #out { margin-top: 1rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>viewerUrlUtils tests</h1>
+  <p id="status">Running…</p>
+  <pre id="out"></pre>
+  <script type="module">
+    import { run } from "./tests/viewerUrlUtils.test.mjs";
+    const { passed, failed, total, results } = run();
+    const status = document.getElementById("status");
+    const out = document.getElementById("out");
+    status.textContent = failed === 0 ? `All ${total} tests passed.` : `${passed} passed, ${failed} failed of ${total}.`;
+    status.className = failed === 0 ? "pass" : "fail";
+    out.textContent = results.map((r) => (r.ok ? "✓ " : "✗ ") + r.name + (r.error ? ": " + r.error : "")).join("\n");
+  </script>
+</body>
+</html>

@@ -32,7 +32,7 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - **28 Kroki diagram types** and **output formats** (png, svg, jpeg, pdf, txt, base64) per type; validated against [Kroki's support matrix](https://docs.kroki.io/kroki/diagram-types).
 - **Diagram options**: Optional JSON for quality/theme (e.g. GraphViz scale, Mermaid/PlantUML/D2 theme). See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
 - **Shareable Kroki URL** and **built-in viewer** (zoom, Save to ComfyUI, copy link).
-- **ComfyUI_Viewer**: Connect **content_for_viewer** for SVG in iframe; other formats use saved path. For **iframe embedding of a Kroki URL**, use the viewer in embed mode: `viewer.html?embed=1&url=...` or the Diagram Viewer URL node’s **viewer_url_iframe** output.
+- **ComfyUI_Viewer**: For **iframe embedding of a Kroki URL**, use the viewer in embed mode: `viewer.html?embed=1&url=...` or the Diagram Viewer URL node’s **viewer_url_iframe** output (connect **kroki_url** from UML Render to Diagram Viewer URL). The Diagram Viewer URL node also shows a **live diagram preview** inside the node when **kroki_url** is set.
 - **Local Mermaid**: Backend "local" + [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for offline SVG/PNG; optional theme.
 - **Local Graphviz**: Optional when the `graphviz` Python package is installed.
 
@@ -69,13 +69,11 @@ Pre-commit will format JSON (key order preserved) and run Ruff (lint + format) o
 
 ## Workflows
 
-- **uml_quickstart.json** — Mermaid, PlantUML, GraphViz, D2; quick tryout.
-- **uml_single_node.json** — Single UMLDiagram node (normalized format; use this if you see "missing nodes" or queue errors with a pasted workflow).
-- **uml_all_diagrams.json** — All 28 diagram types.
-- **uml_mermaid.json**, **uml_plantuml.json**, **uml_graphviz.json** — Single-node examples.
-- **llm_kroki_logo.json** — LLM + Prompt Engine → Kroki (needs API key).
+- **uml_single_diagram_only.json** — One UMLDiagram node (no links). Used for CI.
+- **uml_single_node.json** — Single UMLDiagram + Diagram Viewer URL (kroki_url). Use this if you see "missing nodes" or queue errors with a pasted workflow.
+- **uml_mermaid.json** — Mermaid example: one UMLDiagram + Diagram Viewer URL (kroki_url).
 
-To regenerate all workflow files, add viewer nodes, and check that format lists stay in sync, run `python scripts/generate_all_diagrams_workflow.py` (no arguments).
+To regenerate the three workflow files and check that format lists stay in sync, run `python scripts/generate_all_diagrams_workflow.py` (no arguments).
 
 Full list, loading tips, and format: [docs/Workflows.md](docs/Workflows.md). Workflow format and normalizer: [docs/WorkflowFormat.md](docs/WorkflowFormat.md).
 
@@ -109,9 +107,9 @@ uv sync
 
 ### Other issues
 
-- **"Missing nodes" / UMLDiagram not found** — Restart ComfyUI after installing or updating. **Always load workflows from this repo's `workflows/` folder** (e.g. **Load** → `workflows/uml_plantuml.json` or `workflows/uml_single_node.json`) instead of from Manager cache, URL, or paste. That ensures the graph format is valid and the in-browser normalizer runs.
+- **"Missing nodes" / UMLDiagram not found** — Restart ComfyUI after installing or updating. **Always load workflows from this repo's `workflows/` folder** (e.g. **Load** → `workflows/uml_mermaid.json` or `workflows/uml_single_node.json`) instead of from Manager cache, URL, or paste. That ensures the graph format is valid and the in-browser normalizer runs.
 - **KeyError: class_type**, **"SyntaxError: Unexpected non-whitespace character after JSON at position 4"**, or **"Prompt execution failed"** when queueing — ComfyUI expects a specific graph format (camelCase `lastNodeId`/`lastLinkId`, object-style `links`, etc.). If the workflow was pasted or loaded from a bad source, the frontend can send a malformed prompt.
-  - **Fix:** Load a workflow from the `workflows/` folder (e.g. `workflows/uml_plantuml.json`, `workflows/uml_single_node.json`). If you only have a JSON file that shows these errors, normalize it from the ComfyUI-UML repo root: `py scripts/generate_all_diagrams_workflow.py normalize yourfile.json -o fixed.json`, then in ComfyUI use **Load** and open `fixed.json`.
+  - **Fix:** Load a workflow from the `workflows/` folder (e.g. `workflows/uml_mermaid.json`, `workflows/uml_single_node.json`). If you only have a JSON file that shows these errors, normalize it from the ComfyUI-UML repo root: `py scripts/generate_all_diagrams_workflow.py normalize yourfile.json -o fixed.json`, then in ComfyUI use **Load** and open `fixed.json`.
 - **"Cannot convert undefined or null to object" when loading** — Load the workflow from the `workflows/` folder so the in-browser normalizer runs, or fix the JSON with `scripts/generate_all_diagrams_workflow.py normalize` (see [docs/WorkflowFormat.md](docs/WorkflowFormat.md)).
 
 ## License

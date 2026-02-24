@@ -3,6 +3,7 @@
  * Builds Kroki URL from node widgets when opening viewer. Node uses ComfyUI default theme.
  */
 import { app } from "../../scripts/app.js";
+import { formatFromUrl, buildViewerQuery } from "./viewerUrlUtils.mjs";
 
 /** Generated from nodes/kroki_client.py SUPPORTED_FORMATS; do not edit by hand. Run scripts/generate_all_diagrams_workflow.py to update. */
 const SUPPORTED_FORMATS = {
@@ -78,17 +79,6 @@ async function deflateBase64Url(text) {
   return b64.replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-function optionsToQuery(options) {
-  if (!options || typeof options !== "object") return "";
-  const parts = [];
-  for (const [k, v] of Object.entries(options)) {
-    if (v === true || v === "") parts.push([k, ""]);
-    else parts.push([k, String(v)]);
-  }
-  if (parts.length === 0) return "";
-  return "?" + new URLSearchParams(parts).toString();
-}
-
 /**
  * Build Kroki GET URL from current node widget values. Returns null if build fails.
  */
@@ -97,26 +87,16 @@ async function buildKrokiUrlFromNode(node) {
   const diagramType = (getWidgetValue(node, "diagram_type") || "mermaid").toString().toLowerCase().trim();
   const outputFormat = (getWidgetValue(node, "output_format") || "svg").toString().toLowerCase().trim();
   const baseUrl = (getWidgetValue(node, "kroki_url") || "https://kroki.io").toString().replace(/\/$/, "");
-  const diagramOptionsStr = getWidgetValue(node, "diagram_options");
 
   const formats = SUPPORTED_FORMATS[diagramType] || ["png", "svg"];
   if (!formats.includes(outputFormat)) return null;
   const source = (code != null ? String(code) : "").trim();
   if (!source) return null;
 
-  let options = null;
-  if (diagramOptionsStr != null && String(diagramOptionsStr).trim()) {
-    try {
-      const parsed = JSON.parse(String(diagramOptionsStr).trim());
-      if (parsed && typeof parsed === "object") options = parsed;
-    } catch (_) {}
-  }
-
   const encoded = await deflateBase64Url(source);
   if (encoded == null) return null;
 
-  const query = optionsToQuery(options);
-  return `${baseUrl}/${diagramType}/${outputFormat}/${encoded}${query}`;
+  return `${baseUrl}/${diagramType}/${outputFormat}/${encoded}`;
 }
 
 function applyFormatsForType(node, diagramType) {
@@ -130,6 +110,102 @@ function applyFormatsForType(node, diagramType) {
     }
   }
 }
+
+/** When backend is "web": show kroki_url; when "local": hide kroki_url. */
+function applyBackendVisibility(node) {
+  const backendWidget = node.widgets?.find((w) => w.name === "backend");
+  const backend = backendWidget ? String(backendWidget.value || "web").toLowerCase().trim() : "web";
+  const isWeb = backend === "web";
+  const krokiWidget = node.widgets?.find((w) => w.name === "kroki_url");
+  if (krokiWidget) krokiWidget.hidden = !isWeb;
+  node.setSize(node.computeSize());
+  app.graph.setDirtyCanvas(true, true);
+}
+
+/** Debounce (ms) for UMLDiagram inline preview refresh (code/diagram_type/output_format changes). */
+const DIAGRAM_PREVIEW_DEBOUNCE_MS = 400;
+
+/**
+ * Attach a live iframe preview to a UMLDiagram node.
+ * Uses buildKrokiUrlFromNode (client-side); refreshes debounced on code/diagram_type/output_format/kroki_url/backend.
+ */
+function _attachInlinePreviewForDiagram(node) {
+  if (!node.addDOMWidget) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText =
+    "width:100%; height:" + PREVIEW_HEIGHT + "px; position:relative; overflow:hidden; " +
+    "border-radius:6px; background:var(--comfy-menu-bg,#1a1a2e); border:1px solid var(--border-color,#444);";
+
+  const placeholder = document.createElement("div");
+  placeholder.style.cssText =
+    "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; " +
+    "color:var(--descrip-text,#888); font-size:12px; font-family:sans-serif; padding:8px; text-align:center;";
+  placeholder.textContent = "Enter diagram code and set type/format to see preview.";
+  wrapper.appendChild(placeholder);
+
+  const iframe = document.createElement("iframe");
+  iframe.title = "Diagram preview";
+  iframe.style.cssText =
+    "position:absolute; inset:0; width:100%; height:100%; border:none; border-radius:6px; opacity:0;";
+  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups");
+  wrapper.appendChild(iframe);
+
+  node.addDOMWidget("diagram_preview", "preview", wrapper, {
+    getValue() { return ""; },
+    setValue() {},
+    computeSize() { return [node.size?.[0] ?? 400, PREVIEW_HEIGHT + 8]; },
+  });
+
+  let debounceTimer = null;
+  function scheduleRefresh() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      refreshPreview();
+    }, DIAGRAM_PREVIEW_DEBOUNCE_MS);
+  }
+
+  async function refreshPreview() {
+    let krokiUrl = null;
+    try {
+      krokiUrl = await buildKrokiUrlFromNode(node);
+    } catch (_) {
+      krokiUrl = null;
+    }
+    if (!krokiUrl) {
+      iframe.removeAttribute("src");
+      placeholder.style.display = "flex";
+      iframe.style.opacity = "0";
+      return;
+    }
+    placeholder.style.display = "none";
+    iframe.style.opacity = "1";
+    const base = getViewerBaseUrl();
+    const iframeSrc = base + buildViewerQuery(krokiUrl, formatFromUrl(krokiUrl), true);
+    if (iframe.src !== iframeSrc) iframe.src = iframeSrc;
+  }
+
+  for (const name of ["code", "diagram_type", "output_format", "kroki_url", "backend"]) {
+    const w = node.widgets?.find((x) => x.name === name);
+    if (!w) continue;
+    const orig = w.callback;
+    w.callback = function (value, appRef, nodeRef) {
+      if (orig) orig(value, appRef, nodeRef);
+      scheduleRefresh();
+    };
+  }
+
+  refreshPreview();
+
+  const minH = PREVIEW_HEIGHT + 120;
+  if (!node.size || node.size[1] < minH) {
+    node.setSize([node.size?.[0] ?? 400, Math.max(node.size?.[1] ?? 0, minH)]);
+  }
+}
+
+/** Height (px) of the inline diagram preview inside UMLDiagram and UMLViewerURL nodes. */
+const PREVIEW_HEIGHT = 320;
 
 app.registerExtension({
   name: "ComfyUI-UML.viewer",
@@ -152,7 +228,7 @@ app.registerExtension({
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeType.comfyClass !== "UMLDiagram") return;
-    if (nodeData.size == null) nodeData.size = [420, 320];
+    if (nodeData.size == null) nodeData.size = [400, 300];
     const origOnResize = nodeType.prototype.onResize;
     nodeType.prototype.onResize = function (size) {
       const r = origOnResize?.apply(this, arguments);
@@ -163,8 +239,8 @@ app.registerExtension({
   },
   async nodeCreated(node) {
     if (node.comfyClass !== "UMLDiagram") return;
-    if (node.size && (node.size[0] < 420 || node.size[1] < 320)) {
-      node.setSize([Math.max(420, node.size[0]), Math.max(320, node.size[1])]);
+    if (node.size && (node.size[0] < 400 || node.size[1] < 300)) {
+      node.setSize([Math.max(400, node.size[0]), Math.max(300, node.size[1])]);
     }
     const diagramTypeWidget = node.widgets?.find((w) => w.name === "diagram_type");
     applyFormatsForType(node, diagramTypeWidget?.value ?? "mermaid");
@@ -175,8 +251,127 @@ app.registerExtension({
         if (orig) orig(value, app, node);
       };
     }
+    const backendWidget = node.widgets?.find((w) => w.name === "backend");
+    applyBackendVisibility(node);
+    if (backendWidget) {
+      const origBackend = backendWidget.callback;
+      backendWidget.callback = function (value, app, node) {
+        applyBackendVisibility(node);
+        if (origBackend) origBackend(value, app, node);
+      };
+    }
+    _attachInlinePreviewForDiagram(node);
   },
 });
+
+/** Build viewer URL (and iframe variant) from Diagram Viewer URL node: kroki_url only. */
+function getViewerUrlFromViewerUrlNode(node) {
+  const kroki = (getWidgetValue(node, "kroki_url") ?? "").toString().trim();
+  const url = kroki;
+  const base = getViewerBaseUrl();
+  if (!url) return { full: base + "?embed=1", iframe: base + "?embed=1" };
+  const formatParam = formatFromUrl(url);
+  return {
+    full: base + buildViewerQuery(url, formatParam, false),
+    iframe: base + buildViewerQuery(url, formatParam, true),
+  };
+}
+
+/**
+ * Attach a live iframe preview DOM widget to a UMLViewerURL node.
+ * Shows the viewer in embed mode; updates on kroki_url change and after execution.
+ */
+function _attachInlinePreview(node) {
+  if (!node.addDOMWidget) return; // guard: older ComfyUI versions
+
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText =
+    "width:100%; height:" + PREVIEW_HEIGHT + "px; position:relative; overflow:hidden; " +
+    "border-radius:6px; background:var(--comfy-menu-bg,#1a1a2e); border:1px solid var(--border-color,#444);";
+
+  const placeholder = document.createElement("div");
+  placeholder.style.cssText =
+    "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; " +
+    "color:var(--descrip-text,#888); font-size:12px; font-family:sans-serif; padding:8px; text-align:center;";
+  placeholder.textContent = "Connect a kroki_url to see the diagram here.";
+  wrapper.appendChild(placeholder);
+
+  const iframe = document.createElement("iframe");
+  iframe.title = "Diagram preview";
+  iframe.style.cssText =
+    "position:absolute; inset:0; width:100%; height:100%; border:none; border-radius:6px; opacity:0;";
+  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups");
+  wrapper.appendChild(iframe);
+
+  node.addDOMWidget("diagram_preview", "preview", wrapper, {
+    getValue() { return ""; },
+    setValue() {},
+    computeSize() { return [node.size?.[0] ?? 420, PREVIEW_HEIGHT + 8]; },
+  });
+
+  function refreshPreview() {
+    const kroki = (getWidgetValue(node, "kroki_url") ?? "").toString().trim();
+    if (!kroki) {
+      iframe.removeAttribute("src");
+      placeholder.style.display = "flex";
+      iframe.style.opacity = "0";
+      return;
+    }
+    placeholder.style.display = "none";
+    iframe.style.opacity = "1";
+    const { iframe: iframeSrc } = getViewerUrlFromViewerUrlNode(node);
+    if (iframe.src !== iframeSrc) iframe.src = iframeSrc;
+  }
+
+  const krokiWidget = node.widgets?.find((w) => w.name === "kroki_url");
+  if (krokiWidget) {
+    const origCallback = krokiWidget.callback;
+    krokiWidget.callback = function (value, appRef, nodeRef) {
+      if (origCallback) origCallback(value, appRef, nodeRef);
+      refreshPreview();
+    };
+  }
+
+  const prevOnExecuted = node.onExecuted;
+  node.onExecuted = function () {
+    if (typeof prevOnExecuted === "function") prevOnExecuted.apply(this, arguments);
+    refreshPreview();
+  };
+
+  refreshPreview();
+
+  const minW = 420;
+  const minH = PREVIEW_HEIGHT + 120;
+  if (!node.size || node.size[0] < minW || node.size[1] < minH) {
+    node.setSize([Math.max(node.size?.[0] ?? 0, minW), Math.max(node.size?.[1] ?? 0, minH)]);
+  }
+}
+
+app.registerExtension({
+  name: "ComfyUI-UML.viewerUrl",
+  getNodeMenuItems(node) {
+    if (node.comfyClass !== "UMLViewerURL") return [];
+    const { full, iframe } = getViewerUrlFromViewerUrlNode(node);
+    return [
+      {
+        content: "Open in viewer",
+        callback: () => window.open(full, "_blank", "noopener"),
+      },
+      {
+        content: "Open in window",
+        callback: () => {
+          const features = "width=1000,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+          window.open(iframe, "ComfyUI-UML-Diagram-Viewer", features);
+        },
+      },
+    ];
+  },
+  async nodeCreated(node) {
+    if (node.comfyClass !== "UMLViewerURL") return;
+    _attachInlinePreview(node);
+  },
+});
+
 
 // LLMCall: dynamic Ollama model list and Refresh models button
 const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
@@ -609,7 +804,13 @@ function _normalizePromptNodes(promptObj) {
     const widgets = graphNode.widgets || [];
     const hidden = new Set(["unique_id", "prompt"]);
     for (const w of widgets) {
-      if (w && w.name != null && !hidden.has(String(w.name))) inputs[w.name] = w.value;
+      if (!w || w.name == null || hidden.has(String(w.name))) continue;
+      let val = w.value;
+      if (typeof val === "number" && w.options != null) {
+        const opts = Array.isArray(w.options) ? w.options : w.options.values;
+        if (Array.isArray(opts) && val >= 0 && val < opts.length) val = opts[val];
+      }
+      inputs[w.name] = val;
     }
     return inputs;
   };
@@ -636,12 +837,21 @@ function _normalizePromptNodes(promptObj) {
         node.class_type = graphNode.type || graphNode.comfyClass;
     }
   };
+  const ensureUMLDiagramInputsFromGraph = (node, id) => {
+    if (!node || typeof node !== "object" || node.class_type !== "UMLDiagram") return;
+    if (node.inputs == null || typeof node.inputs !== "object") return;
+    const graphNode = getGraphNode(id);
+    if (!graphNode) return;
+    const built = buildInputsFromGraphNode(graphNode);
+    if (Object.keys(built).length > 0) node.inputs = built;
+  };
 
   if (Array.isArray(promptObj)) {
     promptObj.forEach((node, i) => {
       const id = node && node.id != null ? String(node.id) : String(i);
       ensureNodeClassType(node, id);
       ensureNodeInputs(node, id);
+      ensureUMLDiagramInputsFromGraph(node, id);
     });
     return;
   }
@@ -649,6 +859,7 @@ function _normalizePromptNodes(promptObj) {
     if (node && typeof node === "object" && (node.inputs !== undefined || node._meta !== undefined)) {
       ensureNodeClassType(node, id);
       ensureNodeInputs(node, id);
+      ensureUMLDiagramInputsFromGraph(node, id);
     }
   }
 }
