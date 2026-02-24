@@ -23,22 +23,7 @@ jobs:
           fi
         env:
           REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - name: Install comfy-cli
-        run: pip install comfy-cli
       - name: Publish Custom Node
-        id: publish
-        run: |
-          set +e
-          comfy node publish --token "$REGISTRY_ACCESS_TOKEN" 2>&1 | tee /tmp/publish.out
-          code=${PIPESTATUS[0]}
-          if [ $code -ne 0 ] && grep -q "already exists" /tmp/publish.out 2>/dev/null; then
-            echo "Version already published; skipping."
-            exit 0
-          fi
-          exit $code
-        env:
-          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        uses: Comfy-Org/publish-node-action@main
+        with:
+          personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}

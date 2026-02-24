@@ -49,7 +49,7 @@
       },
       "widgets_values": [
         "Generate a Mermaid diagram that illustrates: {{description}}",
-        "Kroki – Creates diagrams from textual descriptions!",
+        "Kroki \u2013 Creates diagrams from textual descriptions!",
         "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
         "Do not add any text outside the diagram syntax.",
         "kroki.txt",
@@ -246,7 +246,7 @@
   ],
   "groups": [
     {
-      "title": "LLM (Ollama) → Kroki",
+      "title": "LLM (Ollama) \u2192 Kroki",
       "bound": [
         80,
         80,
