@@ -586,17 +586,32 @@ app.registerExtension({
   },
 });
 
-/** Ensure every node in graphToPrompt output has class_type so comfy-test validation passes. */
+/** Ensure every node in graphToPrompt output has class_type and valid inputs so comfy-test validation passes. */
 function _normalizePromptNodes(promptObj) {
   if (!promptObj || typeof promptObj !== "object") return;
-  const getTypeFromGraph = (id) => {
-    const graphs = [app.canvas?.graph, app.graph].filter((g) => g && typeof g.getNodeById === "function");
+  const graphs = [app.canvas?.graph, app.graph].filter((g) => g && typeof g.getNodeById === "function");
+  const getGraphNode = (id) => {
+    const numId = Number(id);
     for (const g of graphs) {
-      const n = g.getNodeById(Number(id)) || g.getNodeById(id);
-      const t = n && (n.type || n.comfyClass);
-      if (t) return t;
+      const n = g.getNodeById(numId) || g.getNodeById(id);
+      if (n) return n;
     }
     return null;
+  };
+  const getTypeFromGraph = (id) => {
+    const n = getGraphNode(id);
+    return (n && (n.type || n.comfyClass)) || null;
+  };
+  const hasInvalidInputs = (node) =>
+    node.inputs && typeof node.inputs === "object" && ("UNKNOWN" in node.inputs || Object.keys(node.inputs).length === 0);
+  const buildInputsFromGraphNode = (graphNode) => {
+    const inputs = {};
+    const widgets = graphNode.widgets || [];
+    const hidden = new Set(["unique_id", "prompt"]);
+    for (const w of widgets) {
+      if (w && w.name != null && !hidden.has(String(w.name))) inputs[w.name] = w.value;
+    }
+    return inputs;
   };
   const ensureNodeClassType = (node, id) => {
     if (!node || typeof node !== "object") return;
@@ -609,16 +624,32 @@ function _normalizePromptNodes(promptObj) {
       node._meta?.comfyClass;
     node.class_type = type != null ? type : "Unknown";
   };
+  const ensureNodeInputs = (node, id) => {
+    if (!node || typeof node.inputs !== "object") return;
+    if (!hasInvalidInputs(node)) return;
+    const graphNode = getGraphNode(id);
+    if (!graphNode) return;
+    const built = buildInputsFromGraphNode(graphNode);
+    if (Object.keys(built).length > 0) {
+      node.inputs = built;
+      if ((!node.class_type || node.class_type === "Unknown") && (graphNode.type || graphNode.comfyClass))
+        node.class_type = graphNode.type || graphNode.comfyClass;
+    }
+  };
 
   if (Array.isArray(promptObj)) {
-    promptObj.forEach((node, i) =>
-      ensureNodeClassType(node, node && node.id != null ? String(node.id) : String(i))
-    );
+    promptObj.forEach((node, i) => {
+      const id = node && node.id != null ? String(node.id) : String(i);
+      ensureNodeClassType(node, id);
+      ensureNodeInputs(node, id);
+    });
     return;
   }
   for (const [id, node] of Object.entries(promptObj)) {
-    if (node && typeof node === "object" && (node.inputs !== undefined || node._meta !== undefined))
+    if (node && typeof node === "object" && (node.inputs !== undefined || node._meta !== undefined)) {
       ensureNodeClassType(node, id);
+      ensureNodeInputs(node, id);
+    }
   }
 }
 
