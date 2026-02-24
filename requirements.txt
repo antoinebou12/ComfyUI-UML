@@ -1,6 +1,9 @@
 httpx>=0.24.0
+kroki>=0.1.6
 # Pillow and numpy/torch are usually provided by ComfyUI
 # For local graphviz backend (optional):
 # graphviz
 # For local Mermaid PNG output (optional; SVG works without it):
-# cairosvg
+# For real SVG preview in the node IMAGE output (optional):
+# cairosvg  # optional: real SVG preview in node
+# comfy-dynamic-widgets  # optional: hide kroki_url/diagram_options when backend=local, theme when backend=web

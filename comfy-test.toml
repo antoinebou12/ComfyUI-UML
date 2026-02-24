@@ -1,9 +1,11 @@
 [test]
+# Test levels: syntax -> install -> registration -> instantiation -> execution
 levels = ["syntax", "install", "registration", "instantiation", "execution"]
 publish = true
 
 [test.workflows]
 timeout = 300
+# Add new workflow JSON filenames here when you add workflows under workflows/
 cpu = ["uml_mermaid.json", "uml_plantuml.json", "uml_graphviz.json"]
 
 [test.platforms]

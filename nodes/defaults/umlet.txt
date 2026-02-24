@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<umlet_diagram>
+    <element>
+        <type>com.umlet.element.custom.State</type>
+        <coordinates><x>140</x><y>60</y><w>150</w><h>40</h></coordinates>
+        <panel_attributes>read boarding pass</panel_attributes>
+    </element>
+    <element>
+        <type>com.umlet.element.custom.InitialState</type>
+        <coordinates><x>170</x><y>100</y><w>20</w><h>20</h></coordinates>
+    </element>
+</umlet_diagram>

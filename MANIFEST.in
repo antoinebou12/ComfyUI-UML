@@ -1,0 +1,2 @@
+# Include default diagram examples so they are packaged with sdist/wheel
+include nodes/defaults/*.txt

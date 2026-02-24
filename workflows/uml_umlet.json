@@ -1,0 +1,59 @@
+{
+  "lastNodeId": 1,
+  "lastLinkId": 0,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UMLDiagram",
+      "pos": [
+        100,
+        100
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1,
+          "shape": 3
+        },
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLDiagram"
+      },
+      "widgets_values": [
+        0,
+        "https://kroki.io",
+        23,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<umlet_diagram>\n    <element>\n        <type>com.umlet.element.custom.State</type>\n        <coordinates><x>140</x><y>60</y><w>150</w><h>40</h></coordinates>\n        <panel_attributes>read boarding pass</panel_attributes>\n    </element>\n    <element>\n        <type>com.umlet.element.custom.InitialState</type>\n        <coordinates><x>170</x><y>100</y><w>20</w><h>20</h></coordinates>\n    </element>\n</umlet_diagram>",
+        0
+      ]
+    }
+  ],
+  "links": [],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

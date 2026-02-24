@@ -1,0 +1,5 @@
+Generate a Mermaid diagram for: {{description}}
+---
+Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.
+---
+Do not add any text outside the diagram syntax.

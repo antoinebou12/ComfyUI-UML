@@ -8,8 +8,9 @@ import os
 import shutil
 import subprocess
 import tempfile
+import urllib.parse
 import zlib
-from typing import Optional
+from typing import Any, Optional
 
 # Try httpx first, fall back to requests
 try:
@@ -53,13 +54,14 @@ DIAGRAM_TYPES = [
 
 # Output formats per diagram type (common ones: png, svg)
 # Types that only support SVG: bpmn, bytefield, excalidraw, nomnoml, pikchr, svgbob, symbolator
+# D2 supports PNG as well per Kroki / JS clients
 SUPPORTED_FORMATS: dict[str, list[str]] = {
     "actdiag": ["png", "svg", "pdf"],
     "blockdiag": ["png", "svg", "pdf"],
     "bpmn": ["svg"],
     "bytefield": ["svg"],
     "c4plantuml": ["png", "svg", "pdf", "txt", "base64"],
-    "d2": ["svg"],
+    "d2": ["png", "svg"],
     "dbml": ["svg"],
     "ditaa": ["png", "svg"],
     "erd": ["png", "svg", "jpeg", "pdf"],
@@ -108,24 +110,81 @@ def _validate_type_format(diagram_type: str, output_format: str) -> None:
         )
 
 
+def _decode_base64_response(output_format: str, content: bytes) -> bytes:
+    """If Kroki returned base64-encoded body, decode to raw bytes."""
+    if output_format != "base64" or not content:
+        return content
+    try:
+        return base64.b64decode(content)
+    except Exception:
+        return content
+
+
+def _options_to_query(options: dict[str, Any]) -> str:
+    """Build query string from diagram_options for GET requests. Flag options use empty value."""
+    if not options:
+        return ""
+    parts = []
+    for k, v in options.items():
+        if v is True or v == "":
+            parts.append((k, ""))
+        else:
+            parts.append((k, str(v)))
+    qs = urllib.parse.urlencode(parts)
+    return "?" + qs if qs else ""
+
+
 def render_web(
     kroki_url: str,
     diagram_type: str,
     diagram_source: str,
     output_format: str,
     timeout: float = 30.0,
+    diagram_options: Optional[dict[str, Any]] = None,
 ) -> bytes:
     """
     Render diagram via Kroki web API.
-    Prefers POST plain text; falls back to GET with deflate+base64url.
+    Prefers POST plain text; when diagram_options is set, uses POST JSON body with
+    diagram_options so Kroki can pass options to the engine (e.g. GraphViz scale,
+    BlockDiag antialias, Mermaid/PlantUML/D2 theme). See Kroki diagram options docs.
     """
     _validate_type_format(diagram_type, output_format)
     base_url = kroki_url.rstrip("/")
     diagram_type = diagram_type.lower().strip()
     output_format = output_format.lower().strip()
-    source_bytes = diagram_source.encode("utf-8")
+    options = diagram_options or {}
 
-    # Prefer POST plain text
+    if options:
+        # POST with JSON body so we can send diagram_options
+        body = {"diagram_source": diagram_source, "diagram_options": options}
+        if _USE_HTTPX:
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    r = client.post(
+                        f"{base_url}/{diagram_type}/{output_format}",
+                        json=body,
+                    )
+                    r.raise_for_status()
+                    return _decode_base64_response(output_format, r.content)
+            except httpx.HTTPStatusError as e:
+                raise KrokiError(f"Kroki HTTP {e.response.status_code}: {e.response.text[:200]}")
+            except httpx.RequestError as e:
+                raise KrokiError(f"Kroki request failed: {e}")
+        else:
+            try:
+                import requests
+                r = requests.post(
+                    f"{base_url}/{diagram_type}/{output_format}",
+                    json=body,
+                    timeout=timeout,
+                )
+                r.raise_for_status()
+                return _decode_base64_response(output_format, r.content)
+            except Exception as e:
+                raise KrokiError(f"Kroki request failed: {e}")
+
+    # Plain text POST
+    source_bytes = diagram_source.encode("utf-8")
     post_url = f"{base_url}/{diagram_type}/{output_format}"
     if _USE_HTTPX:
         try:
@@ -136,7 +195,7 @@ def render_web(
                     headers={"Content-Type": "text/plain; charset=utf-8"},
                 )
                 r.raise_for_status()
-                return r.content
+                return _decode_base64_response(output_format, r.content)
         except httpx.HTTPStatusError as e:
             raise KrokiError(f"Kroki HTTP {e.response.status_code}: {e.response.text[:200]}")
         except httpx.RequestError as e:
@@ -151,7 +210,7 @@ def render_web(
                 timeout=timeout,
             )
             r.raise_for_status()
-            return r.content
+            return _decode_base64_response(output_format, r.content)
         except Exception as e:
             raise KrokiError(f"Kroki request failed: {e}")
 
@@ -171,20 +230,25 @@ def render_web_get(
     diagram_source: str,
     output_format: str,
     timeout: float = 30.0,
+    diagram_options: Optional[dict[str, Any]] = None,
 ) -> bytes:
-    """Render via GET (deflate+base64url). Use for long diagrams or link sharing."""
+    """
+    Render via GET (deflate+base64url). Use for long diagrams or link sharing.
+    diagram_options are appended as query parameters (e.g. ?scale=1.5&antialias=).
+    """
     _validate_type_format(diagram_type, output_format)
     base_url = kroki_url.rstrip("/")
     diagram_type = diagram_type.lower().strip()
     output_format = output_format.lower().strip()
     encoded = _deflate_and_encode(diagram_source)
-    url = f"{base_url}/{diagram_type}/{output_format}/{encoded}"
+    query = _options_to_query(diagram_options or {})
+    url = f"{base_url}/{diagram_type}/{output_format}/{encoded}{query}"
     if _USE_HTTPX:
         try:
             with httpx.Client(timeout=timeout) as client:
                 r = client.get(url)
                 r.raise_for_status()
-                return r.content
+                return _decode_base64_response(output_format, r.content)
         except httpx.HTTPStatusError as e:
             raise KrokiError(f"Kroki HTTP {e.response.status_code}: {e.response.text[:200]}")
         except httpx.RequestError as e:
@@ -194,9 +258,29 @@ def render_web_get(
             import requests
             r = requests.get(url, timeout=timeout)
             r.raise_for_status()
-            return r.content
+            return _decode_base64_response(output_format, r.content)
         except Exception as e:
             raise KrokiError(f"Kroki request failed: {e}")
+
+
+def get_kroki_url(
+    kroki_url: str,
+    diagram_type: str,
+    diagram_source: str,
+    output_format: str,
+    diagram_options: Optional[dict[str, Any]] = None,
+) -> str:
+    """
+    Build shareable Kroki GET URL (deflate+base64url). Same format as JavaScript (pako)
+    so URLs are interchangeable. Optional diagram_options are appended as query params.
+    """
+    _validate_type_format(diagram_type, output_format)
+    base_url = kroki_url.rstrip("/")
+    diagram_type = diagram_type.lower().strip()
+    output_format = output_format.lower().strip()
+    encoded = _deflate_and_encode(diagram_source)
+    query = _options_to_query(diagram_options or {})
+    return f"{base_url}/{diagram_type}/{output_format}/{encoded}{query}"
 
 
 def render_local(
@@ -303,14 +387,19 @@ def render(
     backend: str = "web",
     timeout: float = 30.0,
     theme: Optional[str] = None,
+    diagram_options: Optional[dict[str, Any]] = None,
 ) -> bytes:
     """
     Render diagram: try local if backend=='local', else use web.
     theme: optional for local Mermaid (beautiful-mermaid theme name).
+    diagram_options: optional dict passed to Kroki (e.g. scale for GraphViz, theme for D2/PlantUML,
+    antialias for BlockDiag). See https://docs.kroki.io/kroki/setup/diagram-options/
     """
     if backend == "local":
         data = render_local(diagram_type, diagram_source, output_format, theme=theme)
         if data is not None:
             return data
         # Fall back to web
-    return render_web(kroki_url, diagram_type, diagram_source, output_format, timeout)
+    return render_web(
+        kroki_url, diagram_type, diagram_source, output_format, timeout, diagram_options
+    )

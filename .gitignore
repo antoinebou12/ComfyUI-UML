@@ -1,2 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing / coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Virtual envs
+.env
+.venv
+venv/
+env/
+ENV/
+
+# Logs and caches
+*.log
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+*.pyc
+.vscode/
+*.swp
+*.swo
+
 # Local Mermaid deps (run npm install in scripts/ to enable)
 scripts/node_modules/

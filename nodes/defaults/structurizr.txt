@@ -1,0 +1,18 @@
+workspace "Big Bank plc" "Example workspace." {
+    model {
+        customer = person "Personal Banking Customer" "A customer of the bank." "Customer"
+        internetBankingSystem = softwaresystem "Internet Banking System" "Allows customers to view accounts and make payments." {
+            webApplication = container "Web Application" "Delivers the SPA." "Java and Spring MVC"
+            apiApplication = container "API Application" "Provides API." "Java and Spring MVC"
+            database = container "Database" "Stores data." "Oracle Database Schema"
+        }
+        customer -> webApplication "Uses" "HTTPS"
+        customer -> apiApplication "Uses" "HTTPS"
+        webApplication -> apiApplication "Delivers"
+        apiApplication -> database "Reads from and writes to" "JDBC"
+    }
+    views {
+        systemcontext internetBankingSystem "SystemContext" { include * }
+        container internetBankingSystem "Containers" { include * }
+    }
+}
