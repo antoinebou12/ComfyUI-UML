@@ -54,4 +54,4 @@ Comfy-test runs workflow execution against a list in `comfy-test.toml` and `pypr
 python scripts/generate_all_diagrams_workflow.py generate-cpu
 ```
 
-The full workflows (with Diagram Viewer URL) in `workflows/` and `example_workflows/` stay as-is for users; only the test runner uses the `*_cpu.json` files.
+The full workflows (with Diagram Viewer URL) in `workflows/` stay as-is for users; only the test runner uses the `*_cpu.json` files.

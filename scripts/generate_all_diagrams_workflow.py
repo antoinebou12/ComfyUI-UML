@@ -1,34 +1,18 @@
 """
-Workflow tools: generate diagram workflows, normalize ComfyUI workflow JSON,
-add viewer nodes, and check format sync.
+Single pipeline for workflow generation, normalization, viewer injection, and format sync.
 
-Default (no subcommand): full pipeline — generate workflows, normalize,
-add UMLViewerURL to workflows that have UMLDiagram, normalize again,
-then verify web/ComfyUI-UML.js SUPPORTED_FORMATS matches nodes/kroki_client.py
-(exits 1 if they differ).
+Default (no subcommand): full pipeline — generate workflows, normalize, add viewer to
+non-CPU workflows, normalize again, then check that web/ComfyUI-UML.js SUPPORTED_FORMATS
+matches nodes/kroki_client.py. All workflow JSON is written with indent=2 and trailing
+newline. Exits 1 if formats are out of sync.
 
   python scripts/generate_all_diagrams_workflow.py
-  → generate → normalize → add viewer → normalize → check formats sync
 
-Generate only (no add-viewer, no sync check):
-
-  python scripts/generate_all_diagrams_workflow.py generate
-  → Writes workflows/uml_<type>.json and uml_all_diagrams.json, then normalizes
-    them and workflows/*.json
-
-Normalize only (specific files or stdin):
-
-  python scripts/generate_all_diagrams_workflow.py normalize
-  → Normalizes workflows/*.json in place (no input = use this folder).
-
-  python scripts/generate_all_diagrams_workflow.py normalize workflow.json -o fixed.json
-  python scripts/generate_all_diagrams_workflow.py normalize -  (stdin → stdout)
-  python scripts/generate_all_diagrams_workflow.py normalize workflows/*.json -o out_dir
-
-Generate diagram-only workflows for comfy-test CPU execution (no viewer, no links):
-
-  python scripts/generate_all_diagrams_workflow.py generate-cpu
-  → Writes workflows/uml_<type>_cpu.json for each diagram type; use these in comfy-test.toml cpu list.
+Subcommands:
+  generate   — Generate workflows and normalize workflows/*.json (no add-viewer, no sync check).
+  generate-cpu — Write diagram-only workflows/uml_<type>_cpu.json for comfy-test.
+  normalize  — Only normalize given workflow JSON. Omit input to normalize workflows/ in place.
+               Examples: normalize workflow.json -o fixed.json; normalize - (stdin → stdout).
 """
 
 from __future__ import annotations
@@ -37,6 +21,7 @@ import argparse
 import json
 import logging
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -318,6 +303,13 @@ def normalize(data: dict) -> dict:
     return data
 
 
+def _write_workflow_json(path: Path, data: dict, indent: int = 2) -> None:
+    """Write workflow JSON with indent, ensure_ascii=False, and trailing newline."""
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=indent if indent else None, ensure_ascii=False)
+        f.write("\n")
+
+
 def _expand_globs(path_list: list) -> list:
     out: list = []
     for p in path_list:
@@ -361,11 +353,11 @@ def run_normalize(args: argparse.Namespace) -> int:
         raw = json.load(sys.stdin)
         out = normalize(raw)
         if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                json.dump(out, f, indent=args.indent or None, ensure_ascii=False)
+            _write_workflow_json(Path(args.output), out, indent=args.indent or 2)
             logger.info("Wrote %s", args.output)
         else:
             json.dump(out, sys.stdout, indent=args.indent or None, ensure_ascii=False)
+            sys.stdout.write("\n")
         return 0
     out_path = Path(args.output) if args.output else None
     if len(inputs) > 1 and out_path is not None and not out_path.is_dir():
@@ -383,14 +375,240 @@ def run_normalize(args: argparse.Namespace) -> int:
         out = normalize(raw)
         if out_path is not None:
             dest = out_path / path.name if out_path.is_dir() else out_path
-            with open(dest, "w", encoding="utf-8") as f:
-                json.dump(out, f, indent=args.indent or None, ensure_ascii=False)
+            _write_workflow_json(Path(dest), out, indent=args.indent or 2)
             logger.info("Wrote %s", dest)
         else:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(out, f, indent=args.indent or None, ensure_ascii=False)
+            _write_workflow_json(Path(path), out, indent=args.indent or 2)
             logger.info("Normalized %s", path)
     return 0
+
+
+# -----------------------------------------------------------------------------
+# Add viewer to workflows (inlined from add_viewer_to_workflows)
+# -----------------------------------------------------------------------------
+
+
+def _has_viewer_node(nodes: list) -> bool:
+    return any(n and n.get("type") == "UMLViewerURL" for n in nodes)
+
+
+def _ensure_uml_outputs(node: dict) -> bool:
+    """Ensure UMLDiagram has 4 outputs: IMAGE, path, kroki_url, content_for_viewer. Return True if changed."""
+    if not node or node.get("type") != "UMLDiagram":
+        return False
+    outs = node.get("outputs")
+    if not isinstance(outs, list):
+        return False
+    names = [o.get("name") for o in outs if o and o.get("name")]
+    if "content_for_viewer" in names:
+        return False
+    last_slot = max((o.get("slot_index", i) for i, o in enumerate(outs) if o), default=-1)
+    outs.append(
+        {
+            "name": "content_for_viewer",
+            "type": "STRING",
+            "links": None,
+            "slot_index": last_slot + 1,
+            "shape": 3,
+        }
+    )
+    return True
+
+
+def _first_uml_diagram_id(nodes: list) -> int | None:
+    for n in nodes or []:
+        if n and n.get("type") == "UMLDiagram":
+            return n.get("id")
+    return None
+
+
+def _max_node_id(nodes: list) -> int:
+    m = 0
+    for n in nodes or []:
+        if n and isinstance(n.get("id"), (int, float)):
+            m = max(m, int(n["id"]))
+    return m
+
+
+def _max_link_id(links: list) -> int:
+    m = 0
+    for L in links or []:
+        if L and isinstance(L.get("id"), (int, float)):
+            m = max(m, int(L["id"]))
+    return m
+
+
+def _add_viewer_to_workflow(data: dict) -> bool:
+    """Mutate data: add UMLViewerURL and link from first UMLDiagram. Return True if changed."""
+    nodes = data.get("nodes")
+    if not isinstance(nodes, list):
+        return False
+
+    any_uml_updated = any(_ensure_uml_outputs(n) for n in nodes)
+
+    if _has_viewer_node(nodes):
+        return any_uml_updated
+
+    first_uml_id = _first_uml_diagram_id(nodes)
+    if first_uml_id is None:
+        return any_uml_updated
+
+    new_node_id = _max_node_id(nodes) + 1
+    new_link_id = _max_link_id(data.get("links")) + 1
+
+    for n in nodes:
+        if n and n.get("id") == first_uml_id:
+            for o in n.get("outputs") or []:
+                if o and o.get("name") == "kroki_url":
+                    o["links"] = [new_link_id]
+                    break
+            break
+
+    viewer_pos = [100, 420]
+    for n in nodes:
+        if n and n.get("id") == first_uml_id:
+            pos = n.get("pos")
+            size = n.get("size")
+            if (
+                isinstance(pos, list)
+                and len(pos) >= 2
+                and isinstance(size, list)
+                and len(size) >= 2
+            ):
+                viewer_pos = [pos[0], pos[1] + size[1] + 20]
+            break
+
+    viewer_node = {
+        "id": new_node_id,
+        "type": "UMLViewerURL",
+        "class_type": "UMLViewerURL",
+        "pos": viewer_pos,
+        "size": [280, 80],
+        "flags": {},
+        "order": len(nodes),
+        "mode": 0,
+        "inputs": [{"name": "kroki_url", "type": "STRING", "link": new_link_id}],
+        "outputs": [
+            {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+        ],
+        "properties": {"Node name for S/R": "UMLViewerURL"},
+        "widgets_values": [],
+    }
+    nodes.append(viewer_node)
+
+    link = {
+        "id": new_link_id,
+        "origin_id": first_uml_id,
+        "origin_slot": 2,
+        "target_id": new_node_id,
+        "target_slot": 0,
+        "type": "STRING",
+    }
+    links = data.get("links")
+    if not isinstance(links, list):
+        links = []
+        data["links"] = links
+    links.append(link)
+
+    data["lastNodeId"] = new_node_id
+    data["lastLinkId"] = new_link_id
+
+    groups = data.get("groups")
+    if isinstance(groups, list) and groups:
+        g = groups[0]
+        if isinstance(g, dict) and "nodes" in g:
+            g["nodes"] = list(g["nodes"]) if isinstance(g["nodes"], list) else []
+            if new_node_id not in g["nodes"]:
+                g["nodes"].append(new_node_id)
+            b = g.get("bound")
+            if isinstance(b, list) and len(b) >= 4:
+                g["bound"] = [b[0], b[1], b[2], b[3] + 120]
+
+    return True
+
+
+def _run_add_viewer_to_workflows() -> int:
+    """Add UMLViewerURL to workflows that have UMLDiagram but not yet UMLViewerURL. Skip *_cpu.json."""
+    workflows_dir = root / "workflows"
+    changed = 0
+    if not workflows_dir.is_dir():
+        return 0
+    for path in sorted(workflows_dir.glob("*.json")):
+        if path.name.endswith("_cpu.json"):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.warning("Skip %s: %s", path, e)
+            continue
+        if _add_viewer_to_workflow(data):
+            _write_workflow_json(path, data)
+            logger.info("Updated %s", path)
+            changed += 1
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Check formats sync (inlined from check_formats_sync)
+# -----------------------------------------------------------------------------
+
+JS_PATH = root / "web" / "ComfyUI-UML.js"
+
+
+def _get_py_supported_formats() -> dict:
+    from nodes.kroki_client import SUPPORTED_FORMATS  # noqa: E402
+
+    return {k: list(v) for k, v in SUPPORTED_FORMATS.items()}
+
+
+def _get_js_supported_formats() -> dict:
+    text = JS_PATH.read_text(encoding="utf-8")
+    start = text.find("const SUPPORTED_FORMATS = {")
+    if start == -1:
+        raise SystemExit("Could not find SUPPORTED_FORMATS in web/ComfyUI-UML.js")
+    start = text.index("{", start) + 1
+    depth = 1
+    i = start
+    while i < len(text) and depth:
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+        i += 1
+    block = text[start : i - 1]
+    out = {}
+    for m in re.finditer(r"\s*(\w+):\s*\[(.*?)\]\s*,?", block, re.DOTALL):
+        key = m.group(1)
+        arr = m.group(2)
+        values = [s.strip().strip('"') for s in arr.split(",") if s.strip()]
+        out[key] = values
+    return out
+
+
+def _check_formats_sync() -> int:
+    """Return 0 if web/ComfyUI-UML.js SUPPORTED_FORMATS matches nodes/kroki_client.py, else 1."""
+    if not JS_PATH.exists():
+        logger.error("JS file not found: %s", JS_PATH)
+        return 1
+    try:
+        py_f = _get_py_supported_formats()
+        js_f = _get_js_supported_formats()
+    except Exception as e:
+        logger.error("Error: %s", e)
+        return 1
+    if py_f == js_f:
+        return 0
+    only_py = set(py_f) - set(js_f)
+    only_js = set(js_f) - set(py_f)
+    diff_keys = [k for k in py_f if k in js_f and py_f[k] != js_f[k]]
+    if only_py:
+        logger.info("Only in nodes/kroki_client.py: %s", sorted(only_py))
+    if only_js:
+        logger.info("Only in web/ComfyUI-UML.js: %s", sorted(only_js))
+    for k in diff_keys:
+        logger.info("Mismatch %s: Python %s vs JS %s", k, py_f[k], js_f[k])
+    return 1
 
 
 # -----------------------------------------------------------------------------
@@ -487,8 +705,7 @@ def run_generate() -> int:
         )
         per_type = normalize(build_single_node_workflow(dtype, i))
         out_per = workflows_dir / f"uml_{dtype}.json"
-        with open(out_per, "w", encoding="utf-8") as f:
-            json.dump(per_type, f, indent=2)
+        _write_workflow_json(out_per, per_type)
         logger.info("Wrote %s", out_per)
     groups = [
         {
@@ -515,15 +732,14 @@ def run_generate() -> int:
         }
     )
     out_all = workflows_dir / "uml_all_diagrams.json"
-    with open(out_all, "w", encoding="utf-8") as f:
-        json.dump(wf, f, indent=2)
+    _write_workflow_json(out_all, wf)
     logger.info("Wrote %s", out_all)
 
     # Write LLM Ollama workflow to workflows/
     llm_ollama = _build_llm_ollama_workflow()
     out_ollama = workflows_dir / "llm_ollama.json"
-    with open(out_ollama, "w", encoding="utf-8") as f:
-        json.dump(llm_ollama, f, indent=2)
+    _write_workflow_json(out_ollama, llm_ollama)
+    logger.info("Wrote %s", out_ollama)
     logger.info("Wrote %s", out_ollama)
     return 0
 
@@ -538,8 +754,7 @@ def run_generate_cpu() -> int:
     for i, dtype in enumerate(DIAGRAM_TYPES):
         per_type = normalize(build_single_node_workflow(dtype, i))
         out_path = workflows_dir / f"uml_{dtype}_cpu.json"
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(per_type, f, indent=2)
+        _write_workflow_json(out_path, per_type)
         logger.info("Wrote %s", out_path)
     return 0
 
@@ -753,16 +968,12 @@ def _run_in_place_normalize() -> int:
 
 
 def run_full_pipeline() -> int:
-    """Generate, normalize, add viewer to all workflows, normalize again, then check formats sync."""
+    """Generate, normalize, add viewer to non-CPU workflows, normalize again, then check formats sync."""
     run_generate()
     _run_in_place_normalize()
-    import add_viewer_to_workflows  # noqa: E402
-
-    add_viewer_to_workflows.main()
+    _run_add_viewer_to_workflows()
     _run_in_place_normalize()
-    import check_formats_sync  # noqa: E402
-
-    return check_formats_sync.main()
+    return _check_formats_sync()
 
 
 # -----------------------------------------------------------------------------
