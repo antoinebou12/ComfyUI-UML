@@ -45,6 +45,13 @@
           "links": null,
           "slot_index": 3,
           "shape": 3
+        },
+        {
+          "name": "viewer_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 4,
+          "shape": 3
         }
       ],
       "properties": {

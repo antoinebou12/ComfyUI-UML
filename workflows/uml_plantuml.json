@@ -62,8 +62,8 @@
       "widgets_values": [
         0,
         "https://kroki.io",
-        11,
-        "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->John: Hello John, how are you?\n    loop Healthcheck\n        John->John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->Alice: Great!\n    John->Bob: How about you?\n    Bob-->John: Jolly good!",
+        16,
+        "@startuml\nleft to right direction\nskinparam packageStyle rectangle\nskinparam monochrome true\nactor customer\nactor clerk\nrectangle checkout {\n  customer -- (checkout)\n  (checkout) .> (payment) : include\n  (help) .> (checkout) : extends\n  (checkout) -- clerk\n}\n@enduml",
         1
       ],
       "inputs": []

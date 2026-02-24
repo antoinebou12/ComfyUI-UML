@@ -5,7 +5,7 @@ Default (no subcommand): full pipeline — generate workflows, normalize, add vi
 non-CPU workflows, normalize again, then check that web/ComfyUI-UML.js SUPPORTED_FORMATS
 matches nodes/kroki_client.py. All workflow JSON is written with indent=2 and trailing
 newline. Exits 1 if formats are out of sync. The generate step produces only the
-reduced set: uml_single_diagram_only.json, uml_single_node.json, uml_mermaid.json.
+reduced set: uml_single_diagram_only.json, uml_single_node.json, uml_mermaid.json, uml_plantuml.json, uml_llm_ollama.json.
 
   python scripts/generate_all_diagrams_workflow.py
 
@@ -877,6 +877,69 @@ def _build_uml_mermaid_workflow() -> dict:
     })
 
 
+def _build_uml_plantuml_workflow() -> dict:
+    """Build uml_plantuml.json: one UMLDiagram (plantuml) + one UMLViewerURL, kroki_url only."""
+    plantuml_idx = DIAGRAM_TYPES.index("plantuml")
+    plantuml_code = get_default_code("plantuml")
+    fmt_idx = format_string_to_widget_index("plantuml", "svg")
+
+    outputs_template = [
+        {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
+    ]
+    outputs = [dict(o) for o in outputs_template]
+    outputs[2]["links"] = [1]
+
+    nodes = [
+        {
+            "id": 1,
+            "type": "UMLDiagram",
+            "class_type": "UMLDiagram",
+            "pos": [100, 100],
+            "size": [400, 300],
+            "flags": {},
+            "order": 0,
+            "mode": 0,
+            "outputs": outputs,
+            "properties": {"Node name for S/R": "UMLDiagram"},
+            "widgets_values": [0, "https://kroki.io", plantuml_idx, plantuml_code, fmt_idx],
+            "inputs": [],
+        },
+        {
+            "id": 2,
+            "type": "UMLViewerURL",
+            "class_type": "UMLViewerURL",
+            "pos": [100, 420],
+            "size": [280, 80],
+            "flags": {},
+            "order": 1,
+            "mode": 0,
+            "outputs": [
+                {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 0, "shape": 3}
+            ],
+            "properties": {"Node name for S/R": "UMLViewerURL"},
+            "widgets_values": [],
+            "inputs": [{"name": "kroki_url", "type": "STRING", "link": 1}],
+        },
+    ]
+    links = [
+        {"id": 1, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 0, "type": "STRING"},
+    ]
+    return normalize({
+        "lastNodeId": 2,
+        "lastLinkId": 1,
+        "nodes": nodes,
+        "links": links,
+        "groups": [],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    })
+
+
 def _build_uml_single_node_multi_workflow() -> dict:
     """Build uml_single_node_multi.json: blockdiag SVG, blockdiag PNG, plantuml TXT, each with a viewer.
     Tests viewer with URL, SVG, PNG, and TXT formats. Not used in CI cpu list (multi-link validation issues)."""
@@ -1148,12 +1211,22 @@ def run_generate() -> int:
     uml_mermaid_wf = _build_uml_mermaid_workflow()
     _write_workflow_json(workflows_dir / "uml_mermaid.json", uml_mermaid_wf)
     logger.info("Wrote %s", workflows_dir / "uml_mermaid.json")
+
+    # PlantUML example: one UMLDiagram (plantuml) + one UMLViewerURL, kroki_url only.
+    uml_plantuml_wf = _build_uml_plantuml_workflow()
+    _write_workflow_json(workflows_dir / "uml_plantuml.json", uml_plantuml_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_plantuml.json")
+
+    # LLM (Ollama) → Kroki: LLMPromptEngine → LLMCall → UMLDiagram → UMLViewerURL.
+    uml_llm_ollama_wf = _build_llm_ollama_workflow()
+    _write_workflow_json(workflows_dir / "uml_llm_ollama.json", uml_llm_ollama_wf)
+    logger.info("Wrote %s", workflows_dir / "uml_llm_ollama.json")
     return 0
 
 
 def _build_llm_ollama_workflow() -> dict:
     """Build the LLM (Ollama) → Kroki workflow dict; normalized."""
-    from nodes.llm_call import OLLAMA_MODELS
+    from nodes.uml_llm import OLLAMA_MODELS
 
     default_ollama_model = OLLAMA_MODELS[0] if OLLAMA_MODELS else "llama3.2"
     wf = {
