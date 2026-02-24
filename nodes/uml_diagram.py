@@ -69,6 +69,7 @@ class UMLDiagram:
     """Render diagram source (Mermaid, PlantUML, etc.) to IMAGE and save file."""
 
     CATEGORY = "UML"
+    SEARCH_ALIASES = ["uml", "mermaid", "plantuml", "diagram", "kroki", "render"]
     RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("IMAGE", "path", "kroki_url", "content_for_viewer")
     FUNCTION = "run"
@@ -106,12 +107,22 @@ class UMLDiagram:
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
+                "prompt": "PROMPT",
             },
         }
 
     @classmethod
-    def VALIDATE_INPUTS(cls, input_types):
-        return True
+    def VALIDATE_INPUTS(cls, diagram_type=None, output_format=None):
+        # Only constant (widget) values are passed; format vs diagram_type is also validated in run().
+        if diagram_type is None or output_format is None:
+            return True
+        if not isinstance(diagram_type, str) or not isinstance(output_format, str):
+            return True
+        key = diagram_type.lower().strip()
+        allowed = SUPPORTED_FORMATS.get(key, ["png", "svg"])
+        if output_format.lower().strip() in allowed:
+            return True
+        return f"Format '{output_format}' not supported for {diagram_type}. Allowed: {', '.join(allowed)}"
 
     def run(
         self,
@@ -124,6 +135,7 @@ class UMLDiagram:
         theme: str = "",
         code_input=None,
         unique_id=None,
+        prompt=None,
     ):
         if code_input is not None:
             code = _normalize_to_code(code_input)
@@ -150,12 +162,23 @@ class UMLDiagram:
         theme_val = (theme or "").strip() or None
 
         def _send_progress(value: int, max_val: int = 1) -> None:
+            # Progress payload: node is required; prompt_id included when provided by executor (see Messages docs).
             if unique_id is None:
                 return
             try:
                 from server import PromptServer
-                if getattr(PromptServer, "instance", None) is not None:
-                    PromptServer.instance.send_sync("progress", {"node": unique_id, "value": value, "max": max_val})
+                if getattr(PromptServer, "instance", None) is None:
+                    return
+                payload = {"node": unique_id, "value": value, "max": max_val}
+                prompt_id = None
+                if prompt is not None:
+                    if isinstance(prompt, dict) and "prompt_id" in prompt:
+                        prompt_id = prompt["prompt_id"]
+                    elif isinstance(prompt, (list, tuple)) and len(prompt):
+                        prompt_id = prompt[0]
+                if prompt_id is not None:
+                    payload["prompt_id"] = prompt_id
+                PromptServer.instance.send_sync("progress", payload)
             except Exception:
                 pass
 

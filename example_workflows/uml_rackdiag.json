@@ -1,0 +1,59 @@
+{
+  "lastNodeId": 1,
+  "lastLinkId": 0,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UMLDiagram",
+      "pos": [
+        100,
+        100
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null,
+          "slot_index": 0,
+          "shape": 3
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1,
+          "shape": 3
+        },
+        {
+          "name": "kroki_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S/R": "UMLDiagram"
+      },
+      "widgets_values": [
+        0,
+        "https://kroki.io",
+        17,
+        "rackdiag {\n  16U;\n  1: UPS [2U];\n  3: DB Server;\n  4: Web Server;\n  5: Web Server;\n  6: Web Server;\n  7: Load Balancer;\n  8: L3 Switch;\n}",
+        0
+      ]
+    }
+  ],
+  "links": [],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

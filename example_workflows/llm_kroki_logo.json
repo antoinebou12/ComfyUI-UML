@@ -1,0 +1,84 @@
+{
+  "lastNodeId": 3,
+  "lastLinkId": 3,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LLMPromptEngine",
+      "pos": [100, 100],
+      "size": [400, 320],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "prompt", "type": "STRING", "links": [1], "slot_index": 0, "shape": 3},
+        {"name": "positive", "type": "STRING", "links": null, "slot_index": 1, "shape": 3},
+        {"name": "negative", "type": "STRING", "links": [2], "slot_index": 2, "shape": 3}
+      ],
+      "properties": {"Node name for S/R": "LLMPromptEngine"},
+      "widgets_values": [
+        "Generate a Mermaid diagram that illustrates: {{description}}",
+        "Kroki – Creates diagrams from textual descriptions!",
+        "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
+        "Do not add any text outside the diagram syntax.",
+        "kroki_logo.txt",
+        "mermaid",
+        "svg"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LLMCall",
+      "pos": [560, 100],
+      "size": [320, 200],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "prompt", "type": "STRING", "link": 1},
+        {"name": "negative_prompt", "type": "STRING", "link": 2}
+      ],
+      "outputs": [
+        {"name": "text", "type": "STRING", "links": [3], "slot_index": 0, "shape": 3}
+      ],
+      "properties": {"Node name for S/R": "LLMCall"},
+      "widgets_values": ["", "openai", "gpt-4o-mini", "", ""]
+    },
+    {
+      "id": 3,
+      "type": "UMLDiagram",
+      "pos": [560, 360],
+      "size": [400, 300],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"name": "code_input", "type": "*", "link": 3}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": null, "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": null, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": null, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": null, "slot_index": 3, "shape": 3}
+      ],
+      "properties": {"Node name for S/R": "UMLDiagram"},
+      "widgets_values": [0, "https://kroki.io", 11, "", 1]
+    }
+  ],
+  "links": [
+    {"id": 1, "origin_id": 1, "origin_slot": 0, "target_id": 2, "target_slot": 0, "type": "STRING"},
+    {"id": 2, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 3, "type": "STRING"},
+    {"id": 3, "origin_id": 2, "origin_slot": 0, "target_id": 3, "target_slot": 4, "type": "STRING"}
+  ],
+  "groups": [
+    {
+      "title": "LLM → Kroki",
+      "bound": [80, 80, 900, 620],
+      "nodes": [1, 2, 3]
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
