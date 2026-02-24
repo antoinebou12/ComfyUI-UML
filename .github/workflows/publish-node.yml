@@ -23,7 +23,22 @@ jobs:
           fi
         env:
           REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
-      - name: Publish Custom Node
-        uses: Comfy-Org/publish-node-action@main
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+          python-version: "3.10"
+      - name: Install comfy-cli
+        run: pip install comfy-cli
+      - name: Publish Custom Node
+        id: publish
+        run: |
+          out=$(comfy --skip-prompt --no-enable-telemetry env 2>&1; comfy node publish --token "$REGISTRY_ACCESS_TOKEN" 2>&1)
+          code=$?
+          echo "$out"
+          if [ $code -ne 0 ] && echo "$out" | grep -q "already exists"; then
+            echo "Version already published; skipping."
+            exit 0
+          fi
+          exit $code
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}

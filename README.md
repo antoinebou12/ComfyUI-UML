@@ -16,6 +16,7 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - [Installation](#installation)
 - [Updating](#updating)
 - [Usage](#usage)
+- [Kroki diagram types and format support](#kroki-diagram-types-and-format-support)
 - [Testing](#testing)
 - [Workflows](#workflows)
 - [License](#license)
@@ -24,7 +25,7 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 ## Features
 
 - **Kroki (web)**: Many diagram types via the Kroki API. No local setup.
-- **All 28 Kroki diagram types** and **output formats** (png, svg, jpeg, pdf, txt, base64) where supported by each engine; diagram type and format validated against [Kroki’s support matrix](https://docs.kroki.io/kroki/diagram-types). (Details in [Usage](#usage).)
+- **All 28 Kroki diagram types** and **output formats** (png, svg, jpeg, pdf, txt, base64) as supported by each diagram type; diagram type and format validated against [Kroki’s support matrix](https://docs.kroki.io/kroki/diagram-types). (Details in [Usage](#usage).)
 - **Diagram options**: Optional JSON passed to Kroki for quality/theme (e.g. GraphViz `scale`, BlockDiag `antialias`, Mermaid/PlantUML/D2 `theme`). See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
 - **Shareable Kroki URL**: Node outputs **kroki_url** (GET-style, deflate+base64url) to open in a browser or the built-in viewer.
 - **Built-in viewer**: Right-click node → **Open in viewer**; zoom, **Save locally**, **Save to ComfyUI** (`output/uml/`), copy link. Or open `/extensions/ComfyUI-UML/viewer.html?url=<kroki_url>`.
@@ -57,6 +58,43 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - Add the **UML Render (Mermaid/PlantUML/etc)** node (category: UML).
 - Choose **backend**: `web` (Kroki API) or `local` (local Mermaid when diagram type is Mermaid, else web).
 - Choose **diagram_type** and enter **code**. **output_format**: `png`, `svg`, `jpeg`, `pdf`, `txt`, or `base64` (validated per type). **diagram_options** (optional): JSON for Kroki, e.g. GraphViz `{"scale": 1.5}`, BlockDiag `{"antialias": ""}`, D2/PlantUML `{"theme": "dark"}`. See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
+
+### Kroki diagram types and format support
+
+Supported formats per diagram type (matches [Kroki's support](https://docs.kroki.io/kroki/diagram-types)):
+
+| Diagram type | png | svg | jpeg | pdf | txt | base64 |
+|--------------|-----|-----|------|-----|-----|--------|
+| actdiag | ✓ | ✓ | — | ✓ | — | — |
+| blockdiag | ✓ | ✓ | — | ✓ | — | — |
+| bpmn | — | ✓ | — | — | — | — |
+| bytefield | — | ✓ | — | — | — | — |
+| c4plantuml | ✓ | ✓ | — | ✓ | ✓ | ✓ |
+| d2 | ✓ | ✓ | — | — | — | — |
+| dbml | — | ✓ | — | — | — | — |
+| ditaa | ✓ | ✓ | — | — | — | — |
+| erd | ✓ | ✓ | ✓ | ✓ | — | — |
+| excalidraw | — | ✓ | — | — | — | — |
+| graphviz | ✓ | ✓ | ✓ | ✓ | — | — |
+| mermaid | ✓ | ✓ | — | — | — | — |
+| nomnoml | — | ✓ | — | — | — | — |
+| nwdiag | ✓ | ✓ | — | ✓ | — | — |
+| packetdiag | ✓ | ✓ | — | ✓ | — | — |
+| pikchr | — | ✓ | — | — | — | — |
+| plantuml | ✓ | ✓ | — | ✓ | ✓ | ✓ |
+| rackdiag | ✓ | ✓ | — | ✓ | — | — |
+| seqdiag | ✓ | ✓ | — | ✓ | — | — |
+| structurizr | ✓ | ✓ | — | ✓ | ✓ | ✓ |
+| svgbob | — | ✓ | — | — | — | — |
+| symbolator | — | ✓ | — | — | — | — |
+| tikz | ✓ | ✓ | ✓ | ✓ | — | — |
+| umlet | ✓ | ✓ | ✓ | — | — | — |
+| vega | ✓ | ✓ | — | ✓ | — | — |
+| vegalite | ✓ | ✓ | — | ✓ | — | — |
+| wavedrom | — | ✓ | — | — | — | — |
+| wireviz | ✓ | ✓ | — | — | — | — |
+
+(✓ = supported, — = not supported for that type.)
 
 **Outputs** (full list):
 
@@ -105,6 +143,10 @@ Included workflow files (load from ComfyUI or open the JSON):
 ## License
 
 MIT. See repository license.
+
+## Author
+
+**antoinebou12** — [GitHub](https://github.com/antoinebou12) · [Comfy Registry publisher](https://registry.comfy.org/publishers/antoinebou12)
 
 ## Publishing to the Comfy Registry
 
