@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-uml"
-version = "0.1.9"
+version = "0.1.10"
 description = "Render Mermaid, PlantUML, Graphviz, D2 and 28 Kroki diagram types as PNG/SVG/PDF in ComfyUI. Uses the Kroki API (no local setup) or optional local Mermaid/Graphviz. Includes a built-in zoomable viewer (Save to ComfyUI, shareable URLs), optional cairosvg for in-node SVG/PNG preview, and LLM Prompt Engine + LLM Call nodes to generate diagram code from templates."
 readme = "README.md"
 license = { text = "MIT" }
@@ -57,8 +57,14 @@ publish = true
 
 [tool.comfy-test.workflows]
 timeout = 300
-# Diagram-only workflow for comfy-test execution; avoids graphToPrompt link validation failures on some OSes.
-cpu = ["uml_single_diagram_only.json"]
+# All workflows; LLM workflow runs with COMFY_UI_UML_MOCK_LLM=1 (see workflow-tests.yml and docs/Testing.md).
+cpu = [
+  "uml_single_diagram_only.json",
+  "uml_single_node.json",
+  "uml_mermaid.json",
+  "uml_plantuml.json",
+  "uml_llm_ollama.json",
+]
 
 [tool.comfy-test.platforms]
 linux = true

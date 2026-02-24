@@ -89,11 +89,16 @@ async function deflateBase64Url(text) {
 
 /**
  * Build Kroki GET URL from current node widget values. Returns null if build fails.
+ * @param {object} node - UMLDiagram node
+ * @param {string} [formatOverride] - If provided, use this format instead of the widget (must be supported by diagram type).
  */
-async function buildKrokiUrlFromNode(node) {
+async function buildKrokiUrlFromNode(node, formatOverride) {
   const code = getWidgetValue(node, "code");
   const diagramType = widgetValueString(getWidgetValue(node, "diagram_type"), "mermaid").toLowerCase().trim();
-  const outputFormat = widgetValueString(getWidgetValue(node, "output_format"), "svg").toLowerCase().trim();
+  const outputFormat =
+    formatOverride != null && formatOverride !== ""
+      ? String(formatOverride).toLowerCase().trim()
+      : widgetValueString(getWidgetValue(node, "output_format"), "svg").toLowerCase().trim();
   const baseUrl = widgetValueString(getWidgetValue(node, "kroki_url"), "https://kroki.io").replace(/\/$/, "");
 
   const formats = SUPPORTED_FORMATS[diagramType] || ["png", "svg"];
@@ -105,6 +110,47 @@ async function buildKrokiUrlFromNode(node) {
   if (encoded == null) return null;
 
   return `${baseUrl}/${diagramType}/${outputFormat}/${encoded}`;
+}
+
+/** Parse diagram type from a Kroki URL path (e.g. /plantuml/svg/xxx -> "plantuml"). Returns null if not parseable. */
+function getDiagramTypeFromKrokiUrl(url) {
+  if (!url || typeof url !== "string") return null;
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length >= 3) return parts[parts.length - 3];
+  } catch (_) {}
+  return null;
+}
+
+/** Return the same Kroki URL with the format segment replaced by newFormat. Returns null if path has fewer than 3 segments. */
+function replaceKrokiUrlFormat(url, newFormat) {
+  if (!url || typeof url !== "string" || newFormat == null) return null;
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length < 3) return null;
+    parts[parts.length - 2] = String(newFormat);
+    u.pathname = "/" + parts.join("/");
+    return u.toString();
+  } catch (_) {}
+  return null;
+}
+
+/** Trigger download of a Blob with the given filename. */
+function downloadBlob(blob, filename) {
+  if (!blob || !filename) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function _toast(severity, summary, detail) {
+  if (app.extensionManager?.toast?.add) {
+    app.extensionManager.toast.add({ severity, summary, detail, life: 3000 });
+  }
 }
 
 function applyFormatsForType(node, diagramType) {
@@ -162,6 +208,7 @@ function _attachInlinePreviewForDiagram(node) {
     "position:absolute; inset:0; width:100%; height:100%; border:none; border-radius:6px; opacity:0;";
   iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups");
   wrapper.appendChild(iframe);
+  node._umlPreviewIframe = iframe;
 
   node.addDOMWidget("diagram_preview", "preview", wrapper, {
     getValue() { return ""; },
@@ -217,13 +264,18 @@ function _attachInlinePreviewForDiagram(node) {
 }
 
 /** Height (px) of the inline diagram preview inside UMLDiagram and UMLViewerURL nodes. */
-const PREVIEW_HEIGHT = 320;
+const PREVIEW_HEIGHT = 480;
 
 app.registerExtension({
   name: "ComfyUI-UML.viewer",
   getNodeMenuItems(node) {
     if (node.comfyClass !== "UMLDiagram") return [];
-    return [
+    const diagramType = widgetValueString(getWidgetValue(node, "diagram_type"), "mermaid").toLowerCase().trim();
+    const formats = SUPPORTED_FORMATS[diagramType] || ["png", "svg"];
+    const supportsPng = formats.includes("png");
+    const supportsTxt = formats.includes("txt");
+
+    const items = [
       {
         content: "Open in viewer",
         callback: () => {
@@ -236,7 +288,98 @@ app.registerExtension({
           });
         },
       },
+      {
+        content: "Copy Kroki URL",
+        callback: async () => {
+          try {
+            const url = await buildKrokiUrlFromNode(node);
+            if (!url) {
+              _toast("error", "Copy failed", "Could not build Kroki URL (empty code or unsupported format).");
+              return;
+            }
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(url);
+              _toast("success", "Kroki URL copied", "");
+            } else {
+              _toast("error", "Copy failed", "Clipboard not available.");
+            }
+          } catch (e) {
+            _toast("error", "Copy failed", e?.message || "Unknown error");
+          }
+        },
+      },
+      {
+        content: "Fit",
+        callback: () => {
+          const iframe = node._umlPreviewIframe;
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: "comfyui-uml-fit" }, "*");
+          }
+        },
+      },
     ];
+
+    if (supportsPng) {
+      items.push({
+        content: "Save as PNG",
+        callback: async () => {
+          try {
+            const url = await buildKrokiUrlFromNode(node, "png");
+            if (!url) {
+              _toast("error", "Save failed", "Could not build PNG URL.");
+              return;
+            }
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(res.statusText || "Fetch failed");
+            const blob = await res.blob();
+            downloadBlob(blob, "diagram.png");
+            _toast("success", "Saved as PNG", "diagram.png");
+          } catch (e) {
+            _toast("error", "Save as PNG failed", e?.message || "Check CORS or open in viewer to download.");
+          }
+        },
+      });
+    }
+
+    if (supportsTxt) {
+      items.push({
+        content: "Save as TXT",
+        callback: async () => {
+          try {
+            const url = await buildKrokiUrlFromNode(node, "txt");
+            if (!url) {
+              _toast("error", "Save failed", "Could not build TXT URL.");
+              return;
+            }
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(res.statusText || "Fetch failed");
+            const text = await res.text();
+            const blob = new Blob([text], { type: "text/plain" });
+            downloadBlob(blob, "diagram.txt");
+            _toast("success", "Saved as TXT", "diagram.txt");
+          } catch (e) {
+            _toast("error", "Save as TXT failed", e?.message || "Check CORS or open in viewer.");
+          }
+        },
+      });
+    }
+
+    items.push({
+      content: "Save source as text",
+      callback: () => {
+        const code = getWidgetValue(node, "code");
+        const source = (code != null ? String(code) : "").trim();
+        if (!source) {
+          _toast("warn", "No source", "Code widget is empty.");
+          return;
+        }
+        const blob = new Blob([source], { type: "text/plain" });
+        downloadBlob(blob, "diagram_source.txt");
+        _toast("success", "Saved source", "diagram_source.txt");
+      },
+    });
+
+    return items;
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeType.comfyClass !== "UMLDiagram") return;
@@ -335,6 +478,7 @@ function _attachInlinePreview(node) {
     "position:absolute; inset:0; width:100%; height:100%; border:none; border-radius:6px; opacity:0;";
   iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups");
   wrapper.appendChild(iframe);
+  node._umlPreviewIframe = iframe;
 
   node.addDOMWidget("diagram_preview", "preview", wrapper, {
     getValue() { return ""; },
@@ -390,8 +534,9 @@ app.registerExtension({
   name: "ComfyUI-UML.viewerUrl",
   getNodeMenuItems(node) {
     if (node.comfyClass !== "UMLViewerURL") return [];
-    const { full, iframe } = getViewerUrlFromViewerUrlNode(node);
-    return [
+    const { full, iframe: iframeUrl } = getViewerUrlFromViewerUrlNode(node);
+
+    const items = [
       {
         content: "Open in viewer",
         callback: () => window.open(full, "_blank", "noopener"),
@@ -400,10 +545,110 @@ app.registerExtension({
         content: "Open in window",
         callback: () => {
           const features = "width=1000,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
-          window.open(iframe, "ComfyUI-UML-Diagram-Viewer", features);
+          window.open(iframeUrl, "ComfyUI-UML-Diagram-Viewer", features);
+        },
+      },
+      {
+        content: "Copy Kroki URL",
+        callback: async () => {
+          try {
+            const url = await getEffectiveKrokiUrlForViewerUrlNode(node);
+            if (!url) {
+              _toast("error", "Copy failed", "No Kroki URL (set widget or connect UML Render).");
+              return;
+            }
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(url);
+              _toast("success", "Kroki URL copied", "");
+            } else {
+              _toast("error", "Copy failed", "Clipboard not available.");
+            }
+          } catch (e) {
+            _toast("error", "Copy failed", e?.message || "Unknown error");
+          }
+        },
+      },
+      {
+        content: "Fit",
+        callback: () => {
+          const iframe = node._umlPreviewIframe;
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: "comfyui-uml-fit" }, "*");
+          }
+          const minW = 700;
+          const minH = 550;
+          if (!node.size || node.size[0] < minW || node.size[1] < minH) {
+            node.setSize([Math.max(node.size?.[0] ?? 0, minW), Math.max(node.size?.[1] ?? 0, minH)]);
+          }
         },
       },
     ];
+
+    items.push(
+      {
+        content: "Save as PNG",
+        callback: async () => {
+          try {
+            const url = await getEffectiveKrokiUrlForViewerUrlNode(node);
+            if (!url) {
+              _toast("error", "Save failed", "No Kroki URL.");
+              return;
+            }
+            const diagramType = getDiagramTypeFromKrokiUrl(url);
+            const formats = diagramType ? (SUPPORTED_FORMATS[diagramType] || []) : [];
+            if (!formats.includes("png")) {
+              _toast("error", "Save as PNG", "Diagram type does not support PNG.");
+              return;
+            }
+            const pngUrl = replaceKrokiUrlFormat(url, "png");
+            if (!pngUrl) {
+              _toast("error", "Save failed", "Could not build PNG URL.");
+              return;
+            }
+            const res = await fetch(pngUrl);
+            if (!res.ok) throw new Error(res.statusText || "Fetch failed");
+            const blob = await res.blob();
+            downloadBlob(blob, "diagram.png");
+            _toast("success", "Saved as PNG", "diagram.png");
+          } catch (e) {
+            _toast("error", "Save as PNG failed", e?.message || "Check CORS or open in viewer to download.");
+          }
+        },
+      },
+      {
+        content: "Save as TXT",
+        callback: async () => {
+          try {
+            const url = await getEffectiveKrokiUrlForViewerUrlNode(node);
+            if (!url) {
+              _toast("error", "Save failed", "No Kroki URL.");
+              return;
+            }
+            const diagramType = getDiagramTypeFromKrokiUrl(url);
+            const formats = diagramType ? (SUPPORTED_FORMATS[diagramType] || []) : [];
+            if (!formats.includes("txt")) {
+              _toast("error", "Save as TXT", "Diagram type does not support TXT.");
+              return;
+            }
+            const txtUrl = replaceKrokiUrlFormat(url, "txt");
+            if (!txtUrl) {
+              _toast("error", "Save failed", "Could not build TXT URL.");
+              return;
+            }
+            const res = await fetch(txtUrl);
+            if (!res.ok) throw new Error(res.statusText || "Fetch failed");
+            const text = await res.text();
+            const blob = new Blob([text], { type: "text/plain" });
+            downloadBlob(blob, "diagram.txt");
+            _toast("success", "Saved as TXT", "diagram.txt");
+          } catch (e) {
+            _toast("error", "Save as TXT failed", e?.message || "Check CORS or open in viewer.");
+          }
+        },
+      }
+    );
+
+    return items;
   },
   async nodeCreated(node) {
     if (node.comfyClass !== "UMLViewerURL") return;
@@ -411,6 +656,60 @@ app.registerExtension({
   },
 });
 
+
+// Chrome AI (Gemini Nano): feature detection and Run with Chrome AI
+function isChromeAIAvailable() {
+  const LM = typeof globalThis !== "undefined" && globalThis.LanguageModel || typeof window !== "undefined" && window.LanguageModel;
+  return LM && typeof LM.create === "function";
+}
+
+function showChromeAIResultModal(resultText, appRef) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:100000;";
+  const box = document.createElement("div");
+  box.style.cssText = "background:var(--comfy-menu-bg, #333);color:var(--comfy-menu-fg, #eee);padding:16px;border-radius:8px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+  const title = document.createElement("div");
+  title.textContent = "Chrome AI response";
+  title.style.cssText = "font-weight:bold;margin-bottom:8px;";
+  const textarea = document.createElement("textarea");
+  textarea.readOnly = true;
+  textarea.value = resultText || "";
+  textarea.style.cssText = "width:520px;height:280px;resize:vertical;font-family:monospace;font-size:12px;padding:8px;margin-bottom:12px;background:#1e1e1e;color:#eee;border:1px solid #444;border-radius:4px;";
+  const btnRow = document.createElement("div");
+  btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+  const copyBtn = document.createElement("button");
+  copyBtn.textContent = "Copy";
+  copyBtn.className = "comfy-btn";
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(resultText || "").then(() => {
+      if (appRef?.extensionManager?.toast?.add) {
+        appRef.extensionManager.toast.add({ severity: "info", summary: "Copied", detail: "Response copied to clipboard", life: 2000 });
+      }
+    });
+  };
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "Close";
+  closeBtn.className = "comfy-btn";
+  closeBtn.onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  btnRow.append(copyBtn, closeBtn);
+  box.append(title, textarea, btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+async function runChromeAIPrompt(prompt, negativePrompt, appRef) {
+  const LM = typeof globalThis !== "undefined" && globalThis.LanguageModel || typeof window !== "undefined" && window.LanguageModel;
+  if (!LM || typeof LM.create !== "function") {
+    throw new Error("Chrome AI (Gemini Nano) is not available. Use Chrome 138+ and enable \"Prompt API for Gemini Nano\" in chrome://flags. You may need to download the model in chrome://components.");
+  }
+  const initialPrompts = (negativePrompt && String(negativePrompt).trim())
+    ? [{ role: "system", content: "Do NOT do the following: " + String(negativePrompt).trim() }]
+    : [];
+  const session = await LM.create({ initialPrompts });
+  const response = await session.prompt(prompt);
+  return typeof response === "string" ? response : (response && response.text != null ? response.text : String(response));
+}
 
 // LLMCall: dynamic Ollama model list and Refresh models button
 const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
@@ -489,6 +788,40 @@ app.registerExtension({
       urlWidget.callback = function (value, app, node) {
         if (origUrlCallback) origUrlCallback(value, app, node);
         updateModels();
+      };
+
+      const chromeAIButton = this.addWidget("button", "Run with Chrome AI");
+      chromeAIButton.callback = async () => {
+        const promptWidget = this.widgets?.find((w) => w.name === "prompt");
+        const negativeWidget = this.widgets?.find((w) => w.name === "negative_prompt");
+        const prompt = promptWidget != null ? widgetValueString(promptWidget.value) : "";
+        const negative = negativeWidget != null ? widgetValueString(negativeWidget.value) : "";
+        if (!prompt.trim()) {
+          if (app.extensionManager?.toast?.add) {
+            app.extensionManager.toast.add({ severity: "warn", summary: "Chrome AI", detail: "Enter a prompt first", life: 3000 });
+          }
+          return;
+        }
+        const prevName = chromeAIButton.name;
+        chromeAIButton.name = "Running...";
+        if (this.setDirtyCanvas) this.setDirtyCanvas(true);
+        try {
+          const result = await runChromeAIPrompt(prompt, negative, app);
+          showChromeAIResultModal(result, app);
+        } catch (err) {
+          console.error("[ComfyUI-UML] Chrome AI error:", err);
+          if (app.extensionManager?.toast?.add) {
+            app.extensionManager.toast.add({
+              severity: "error",
+              summary: "Chrome AI",
+              detail: err?.message || String(err),
+              life: 6000,
+            });
+          }
+        } finally {
+          chromeAIButton.name = prevName;
+          if (this.setDirtyCanvas) this.setDirtyCanvas(true);
+        }
       };
 
       if (providerWidget && providerWidget.value === "ollama") {

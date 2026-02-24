@@ -5,6 +5,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "beautiful-mermaid": "^1.0.0"
+    "beautiful-mermaid": "^1.0.0",
+    "simple-chromium-ai": "^1.0.0"
   }
 }

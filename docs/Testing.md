@@ -9,13 +9,16 @@ CI runs [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to
 The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
 - **[test]** — `levels`: test levels from `syntax` through `install`, `registration`, `instantiation`, `execution`. `publish = true` enables publish checks.
-- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. ComfyUI-UML uses a single **diagram-only** workflow (`uml_single_diagram_only.json`) for execution tests: one UMLDiagram node, no links. This avoids graphToPrompt link validation issues (e.g. `InvalidLinkError: No link found in parent graph` on macOS) when the frontend converts the graph.
-- The suite runs only diagram-only workflows (Kroki/base64 URL rendering). LLM workflows are not included.
+- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. The suite runs all workflows: diagram-only, diagram+viewer (Mermaid, PlantUML), and the LLM (Ollama) workflow. The LLM workflow runs with **mocked LLM** in CI (see below).
 - **[test.platforms]** — which OSes to run on (linux, macos, windows, windows_portable).
 
 ## Adding workflows to the test suite
 
-1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The default suite uses **uml_single_diagram_only.json** (one UMLDiagram, no links, no groups).
+1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The suite includes: **uml_single_diagram_only.json**, **uml_single_node.json**, **uml_mermaid.json**, **uml_plantuml.json**, and **uml_llm_ollama.json** (LLM workflow runs with mock, see below).
+
+## Mock LLM for CI (uml_llm_ollama.json)
+
+When **COMFY_UI_UML_MOCK_LLM=1** is set (as in the Workflow Tests GitHub Action), **LLMCall** and **UML Code Assistant** return a fixed Mermaid snippet instead of calling Ollama/OpenAI/Anthropic. This allows the LLM workflow to run in CI without a real LLM. The mock response is defined in `nodes/uml_llm_shared.py` (`MOCK_LLM_RESPONSE`). To run the LLM workflow locally with the mock: set `COMFY_UI_UML_MOCK_LLM=1` in your environment before starting ComfyUI (or before running comfy-test).
 
 ## Running comfy-test locally
 

@@ -35,7 +35,7 @@ The same embed URL is used for the node's inline preview and for external iframe
 ## LLM + Prompt Engine workflow
 
 1. **LLM Prompt Engine** (category UML): Builds a prompt from a template and positive/negative instructions; placeholders `{{description}}`, `{{diagram_type}}`, `{{format}}`; **template_file** loads presets from `prompts/` (e.g. `kroki_logo.txt`). Outputs: **prompt**, **positive**, **negative**.
-2. **LLM Call (OpenAI/Anthropic/Ollama)** (category UML): Sends **prompt** (and optionally **negative_prompt**). For OpenAI/Anthropic set **OPENAI_API_KEY** or **ANTHROPIC_API_KEY**, or pass **api_key** in the node. For **Ollama** no key is needed; ensure Ollama is running locally and the model is pulled. Output **text** → UML node **code_input**.
+2. **LLM Call (OpenAI/Anthropic/Gemini/Ollama)** (category UML): Sends **prompt** (and optionally **negative_prompt**). For OpenAI/Anthropic/Gemini set **OPENAI_API_KEY**, **ANTHROPIC_API_KEY**, or **GEMINI_API_KEY**, or pass **api_key** in the node. For **Ollama** no key is needed; ensure Ollama is running locally and the model is pulled. Output **text** → UML node **code_input**.
 3. Connect **LLM Call** → **code_input**, set **diagram_type** and **output_format**, run to get diagram from LLM-generated code.
 
 **Workflow file**: Load **workflows/llm_kroki_logo.json** for Prompt Engine → LLM Call → UML Render. Set API key and run.

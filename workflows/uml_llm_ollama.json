@@ -1,127 +1,65 @@
 {
-  "lastNodeId": 4,
-  "lastLinkId": 4,
+  "lastNodeId": 3,
+  "lastLinkId": 2,
   "nodes": [
     {
       "id": 1,
-      "type": "LLMPromptEngine",
-      "class_type": "LLMPromptEngine",
+      "type": "UMLLLMCodeGenerator",
+      "class_type": "UMLLLMCodeGenerator",
       "pos": [
         100,
         100
       ],
       "size": [
-        400,
-        320
+        420,
+        340
       ],
       "flags": {},
       "order": 0,
       "mode": 0,
       "outputs": [
         {
-          "name": "prompt",
+          "name": "code_input",
           "type": "STRING",
           "links": [
             1
           ],
           "slot_index": 0,
           "shape": 3
-        },
-        {
-          "name": "positive",
-          "type": "STRING",
-          "links": null,
-          "slot_index": 1,
-          "shape": 3
-        },
-        {
-          "name": "negative",
-          "type": "STRING",
-          "links": [
-            2
-          ],
-          "slot_index": 2,
-          "shape": 3
         }
       ],
       "properties": {
-        "Node name for S/R": "LLMPromptEngine"
+        "Node name for S/R": "UMLLLMCodeGenerator"
       },
       "widgets_values": [
-        "Generate a Mermaid diagram that illustrates: {{description}}",
         "Kroki – Creates diagrams from textual descriptions!",
+        "Generate a Mermaid diagram that illustrates: {{description}}",
         "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
         "Do not add any text outside the diagram syntax.",
-        "kroki.txt",
+        "",
         "mermaid",
-        "svg"
+        "svg",
+        "ollama",
+        "llama3.2",
+        "",
+        ""
       ],
       "inputs": []
     },
     {
       "id": 2,
-      "type": "LLMCall",
-      "class_type": "LLMCall",
-      "pos": [
-        560,
-        100
-      ],
-      "size": [
-        320,
-        200
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "links": [
-            3
-          ],
-          "slot_index": 0,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S/R": "LLMCall"
-      },
-      "widgets_values": [
-        "",
-        "ollama",
-        "llama3.2",
-        "",
-        "",
-        ""
-      ],
-      "inputs": [
-        {
-          "name": "prompt",
-          "type": "STRING",
-          "link": 1
-        },
-        {
-          "name": "negative_prompt",
-          "type": "STRING",
-          "link": 2
-        }
-      ]
-    },
-    {
-      "id": 3,
       "type": "UMLDiagram",
       "class_type": "UMLDiagram",
       "pos": [
         560,
-        360
+        100
       ],
       "size": [
         400,
         300
       ],
       "flags": {},
-      "order": 2,
+      "order": 1,
       "mode": 0,
       "outputs": [
         {
@@ -142,7 +80,7 @@
           "name": "kroki_url",
           "type": "STRING",
           "links": [
-            4
+            2
           ],
           "slot_index": 2,
           "shape": 3
@@ -176,24 +114,24 @@
         {
           "name": "code_input",
           "type": "*",
-          "link": 3
+          "link": 1
         }
       ]
     },
     {
-      "id": 4,
+      "id": 3,
       "type": "UMLViewerURL",
       "class_type": "UMLViewerURL",
       "pos": [
         560,
-        700
+        440
       ],
       "size": [
         280,
         80
       ],
       "flags": {},
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "outputs": [
         {
@@ -212,7 +150,7 @@
         {
           "name": "kroki_url",
           "type": "STRING",
-          "link": 4
+          "link": 2
         }
       ]
     }
@@ -228,25 +166,9 @@
     },
     {
       "id": 2,
-      "origin_id": 1,
-      "origin_slot": 2,
-      "target_id": 2,
-      "target_slot": 3,
-      "type": "STRING"
-    },
-    {
-      "id": 3,
       "origin_id": 2,
-      "origin_slot": 0,
-      "target_id": 3,
-      "target_slot": 0,
-      "type": "STRING"
-    },
-    {
-      "id": 4,
-      "origin_id": 3,
       "origin_slot": 2,
-      "target_id": 4,
+      "target_id": 3,
       "target_slot": 0,
       "type": "STRING"
     }
@@ -257,14 +179,13 @@
       "bound": [
         80,
         80,
-        900,
-        820
+        780,
+        560
       ],
       "nodes": [
         1,
         2,
-        3,
-        4
+        3
       ]
     }
   ],

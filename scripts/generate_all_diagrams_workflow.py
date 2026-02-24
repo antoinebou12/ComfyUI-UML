@@ -1217,7 +1217,7 @@ def run_generate() -> int:
     _write_workflow_json(workflows_dir / "uml_plantuml.json", uml_plantuml_wf)
     logger.info("Wrote %s", workflows_dir / "uml_plantuml.json")
 
-    # LLM (Ollama) → Kroki: LLMPromptEngine → LLMCall → UMLDiagram → UMLViewerURL.
+    # LLM (Ollama) → Kroki: UMLLLMCodeGenerator → UMLDiagram → UMLViewerURL.
     uml_llm_ollama_wf = _build_llm_ollama_workflow()
     _write_workflow_json(workflows_dir / "uml_llm_ollama.json", uml_llm_ollama_wf)
     logger.info("Wrote %s", workflows_dir / "uml_llm_ollama.json")
@@ -1225,85 +1225,60 @@ def run_generate() -> int:
 
 
 def _build_llm_ollama_workflow() -> dict:
-    """Build the LLM (Ollama) → Kroki workflow dict; normalized."""
-    from nodes.uml_llm import OLLAMA_MODELS
+    """Build the LLM (Ollama) → Kroki workflow using UMLLLMCodeGenerator (UML Code Assistant) → UMLDiagram → UMLViewerURL. Normalized."""
+    from nodes.uml_llm_shared import OLLAMA_MODELS
 
     default_ollama_model = OLLAMA_MODELS[0] if OLLAMA_MODELS else "llama3.2"
+    mermaid_idx = DIAGRAM_TYPES.index("mermaid")
+    fmt_idx = format_string_to_widget_index("mermaid", "svg")
+
     wf = {
-        "lastNodeId": 4,
-        "lastLinkId": 4,
+        "lastNodeId": 3,
+        "lastLinkId": 2,
         "nodes": [
             {
                 "id": 1,
-                "type": "LLMPromptEngine",
+                "type": "UMLLLMCodeGenerator",
                 "pos": [100, 100],
-                "size": [400, 320],
+                "size": [420, 340],
                 "flags": {},
                 "order": 0,
                 "mode": 0,
                 "inputs": [],
                 "outputs": [
-                    {"name": "prompt", "type": "STRING", "links": [1], "slot_index": 0, "shape": 3},
-                    {
-                        "name": "positive",
-                        "type": "STRING",
-                        "links": None,
-                        "slot_index": 1,
-                        "shape": 3,
-                    },
-                    {
-                        "name": "negative",
-                        "type": "STRING",
-                        "links": [2],
-                        "slot_index": 2,
-                        "shape": 3,
-                    },
+                    {"name": "code_input", "type": "STRING", "links": [1], "slot_index": 0, "shape": 3},
                 ],
-                "properties": {"Node name for S/R": "LLMPromptEngine"},
+                "properties": {"Node name for S/R": "UMLLLMCodeGenerator"},
                 "widgets_values": [
-                    "Generate a Mermaid diagram that illustrates: {{description}}",
                     "Kroki – Creates diagrams from textual descriptions!",
+                    "Generate a Mermaid diagram that illustrates: {{description}}",
                     "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
                     "Do not add any text outside the diagram syntax.",
-                    "kroki.txt",
+                    "",
                     "mermaid",
                     "svg",
+                    "ollama",
+                    default_ollama_model,
+                    "",
+                    "",
                 ],
             },
             {
                 "id": 2,
-                "type": "LLMCall",
+                "type": "UMLDiagram",
                 "pos": [560, 100],
-                "size": [320, 200],
+                "size": [400, 300],
                 "flags": {},
                 "order": 1,
                 "mode": 0,
-                "inputs": [
-                    {"name": "prompt", "type": "STRING", "link": 1},
-                    {"name": "negative_prompt", "type": "STRING", "link": 2},
-                ],
-                "outputs": [
-                    {"name": "text", "type": "STRING", "links": [3], "slot_index": 0, "shape": 3},
-                ],
-                "properties": {"Node name for S/R": "LLMCall"},
-                "widgets_values": ["", "ollama", default_ollama_model, "", "", ""],
-            },
-            {
-                "id": 3,
-                "type": "UMLDiagram",
-                "pos": [560, 360],
-                "size": [400, 300],
-                "flags": {},
-                "order": 2,
-                "mode": 0,
-                "inputs": [{"name": "code_input", "type": "*", "link": 3}],
+                "inputs": [{"name": "code_input", "type": "*", "link": 1}],
                 "outputs": [
                     {"name": "IMAGE", "type": "IMAGE", "links": None, "slot_index": 0, "shape": 3},
                     {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
                     {
                         "name": "kroki_url",
                         "type": "STRING",
-                        "links": [4],
+                        "links": [2],
                         "slot_index": 2,
                         "shape": 3,
                     },
@@ -1317,17 +1292,17 @@ def _build_llm_ollama_workflow() -> dict:
                     {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
                 ],
                 "properties": {"Node name for S/R": "UMLDiagram"},
-                "widgets_values": [0, "https://kroki.io", 11, "", 1],
+                "widgets_values": [0, "https://kroki.io", mermaid_idx, "", fmt_idx],
             },
             {
-                "id": 4,
+                "id": 3,
                 "type": "UMLViewerURL",
-                "pos": [560, 700],
+                "pos": [560, 440],
                 "size": [280, 80],
                 "flags": {},
-                "order": 3,
+                "order": 2,
                 "mode": 0,
-                "inputs": [{"name": "kroki_url", "type": "STRING", "link": 4}],
+                "inputs": [{"name": "kroki_url", "type": "STRING", "link": 2}],
                 "outputs": [
                     {
                         "name": "viewer_url",
@@ -1352,31 +1327,15 @@ def _build_llm_ollama_workflow() -> dict:
             },
             {
                 "id": 2,
-                "origin_id": 1,
-                "origin_slot": 2,
-                "target_id": 2,
-                "target_slot": 3,
-                "type": "STRING",
-            },
-            {
-                "id": 3,
                 "origin_id": 2,
-                "origin_slot": 0,
-                "target_id": 3,
-                "target_slot": 0,
-                "type": "STRING",
-            },
-            {
-                "id": 4,
-                "origin_id": 3,
                 "origin_slot": 2,
-                "target_id": 4,
+                "target_id": 3,
                 "target_slot": 0,
                 "type": "STRING",
             },
         ],
         "groups": [
-            {"title": "LLM (Ollama) → Kroki", "bound": [80, 80, 900, 820], "nodes": [1, 2, 3, 4]},
+            {"title": "LLM (Ollama) → Kroki", "bound": [80, 80, 780, 560], "nodes": [1, 2, 3]},
         ],
         "config": {},
         "extra": {},

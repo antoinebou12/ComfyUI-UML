@@ -334,6 +334,28 @@ zoomInBtn.addEventListener("click", function () { setZoom(scale + step); });
 zoom100Btn.addEventListener("click", function () { setZoom(1); });
 zoomFitBtn.addEventListener("click", fitToView);
 
+if (isEmbed) {
+  const container = document.querySelector(".container");
+  if (container && typeof ResizeObserver !== "undefined") {
+    let raf = null;
+    const observer = new ResizeObserver(function () {
+      if (raf == null) {
+        raf = requestAnimationFrame(function () {
+          raf = null;
+          fitToView();
+        });
+      }
+    });
+    observer.observe(container);
+  }
+}
+
+window.addEventListener("message", function (e) {
+  if (e.data && e.data.type === "comfyui-uml-fit") {
+    fitToView();
+  }
+});
+
 function getDownloadExtension() {
   if (currentFormat === "markdown") return "md";
   if (currentFormat === "jpeg") return "jpg";

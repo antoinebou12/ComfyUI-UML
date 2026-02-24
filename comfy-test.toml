@@ -5,9 +5,13 @@ publish = true
 
 [test.workflows]
 timeout = 300
-# Single diagram-only workflow for CI: one UMLDiagram, no links; avoids graphToPrompt link validation (e.g. on macOS).
+# All workflows: diagram-only and diagram+viewer (no LLM). LLM workflow runs with COMFY_UI_UML_MOCK_LLM=1.
 cpu = [
   "uml_single_diagram_only.json",
+  "uml_single_node.json",
+  "uml_mermaid.json",
+  "uml_plantuml.json",
+  "uml_llm_ollama.json",
 ]
 
 [test.platforms]
