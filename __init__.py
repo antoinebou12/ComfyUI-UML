@@ -32,7 +32,7 @@ WEB_DIRECTORY = "./web"
 
 # Register API route for viewer "Save to ComfyUI" (writes to output/uml/)
 try:
-    from uml_routes import register_routes
+    from nodes.uml_routes import register_routes
     register_routes()
 except Exception:
     pass

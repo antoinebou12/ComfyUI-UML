@@ -10,7 +10,7 @@ editing examples without changing Python code.
 import os
 import re
 
-from kroki_client import DIAGRAM_TYPES
+from .kroki_client import DIAGRAM_TYPES
 
 _DEFAULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "defaults")
 _PLACEHOLDER = "// Enter your diagram source here"

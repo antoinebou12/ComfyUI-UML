@@ -224,45 +224,6 @@ def _deflate_and_encode(text: str) -> str:
     return encoded.replace("+", "-").replace("/", "_")
 
 
-def render_web_get(
-    kroki_url: str,
-    diagram_type: str,
-    diagram_source: str,
-    output_format: str,
-    timeout: float = 30.0,
-    diagram_options: Optional[dict[str, Any]] = None,
-) -> bytes:
-    """
-    Render via GET (deflate+base64url). Use for long diagrams or link sharing.
-    diagram_options are appended as query parameters (e.g. ?scale=1.5&antialias=).
-    """
-    _validate_type_format(diagram_type, output_format)
-    base_url = kroki_url.rstrip("/")
-    diagram_type = diagram_type.lower().strip()
-    output_format = output_format.lower().strip()
-    encoded = _deflate_and_encode(diagram_source)
-    query = _options_to_query(diagram_options or {})
-    url = f"{base_url}/{diagram_type}/{output_format}/{encoded}{query}"
-    if _USE_HTTPX:
-        try:
-            with httpx.Client(timeout=timeout) as client:
-                r = client.get(url)
-                r.raise_for_status()
-                return _decode_base64_response(output_format, r.content)
-        except httpx.HTTPStatusError as e:
-            raise KrokiError(f"Kroki HTTP {e.response.status_code}: {e.response.text[:200]}")
-        except httpx.RequestError as e:
-            raise KrokiError(f"Kroki request failed: {e}")
-    else:
-        try:
-            import requests
-            r = requests.get(url, timeout=timeout)
-            r.raise_for_status()
-            return _decode_base64_response(output_format, r.content)
-        except Exception as e:
-            raise KrokiError(f"Kroki request failed: {e}")
-
-
 def get_kroki_url(
     kroki_url: str,
     diagram_type: str,
@@ -312,8 +273,8 @@ def render_local(
 
 
 def _script_dir() -> str:
-    """Plugin root directory (where kroki_client.py lives)."""
-    return os.path.dirname(os.path.abspath(__file__))
+    """Plugin root directory (parent of this package); scripts/ lives here."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _render_local_mermaid(

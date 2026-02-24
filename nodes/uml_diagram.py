@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from kroki_client import (
+from .kroki_client import (
     DIAGRAM_TYPES,
     KrokiError,
     SUPPORTED_FORMATS,
