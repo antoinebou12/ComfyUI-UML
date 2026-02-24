@@ -1,5 +1,6 @@
 # Optional: use with comfy-env for dependency management.
 # Uncomment and adjust if you use comfy-env (https://github.com/PozzettiAndrea/comfy-env).
+# If Manager reports "Env: not installed", run: python install.py (from this folder) or comfy-env install (from ComfyUI). See docs/Testing.md.
 
 # [node_reqs]
 # ComfyUI_essentials = "cubiq/ComfyUI_essentials"

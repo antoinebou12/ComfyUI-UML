@@ -6,7 +6,8 @@ When run directly or from ComfyUI/Manager:
   `uv sync` to install from pyproject.toml.
 - Otherwise runs `pip install -r requirements.txt`.
 
-Exits 0 on success; on failure prints a clear message and exits non-zero.
+When run as __main__, exits 0 on success and non-zero on failure.
+When called as install(), returns True on success, False on failure (no sys.exit).
 """
 
 import shutil
@@ -15,7 +16,8 @@ import sys
 from pathlib import Path
 
 
-def install() -> None:
+def install() -> bool:
+    """Run install. Returns True on success, False on failure. Does not sys.exit."""
     _root = Path(__file__).resolve().parent
     req_path = _root / "requirements.txt"
     pyproject_path = _root / "pyproject.toml"
@@ -26,7 +28,7 @@ def install() -> None:
         print("ComfyUI-UML: Installing via comfy_env…")
         comfy_env_install()
         print("ComfyUI-UML: comfy_env install completed.")
-        return
+        return True
     except ImportError:
         pass
 
@@ -41,7 +43,7 @@ def install() -> None:
                 text=True,
             )
             print("ComfyUI-UML: uv sync completed.")
-            return
+            return True
         except subprocess.CalledProcessError as e:
             print(
                 "ComfyUI-UML: uv sync failed (exit %d). Falling back to pip." % e.returncode,
@@ -52,7 +54,7 @@ def install() -> None:
 
     if not req_path.is_file():
         print("ComfyUI-UML: requirements.txt not found; nothing to install.", file=sys.stderr)
-        return
+        return False
 
     print("ComfyUI-UML: Installing via pip -r requirements.txt…")
     try:
@@ -63,13 +65,14 @@ def install() -> None:
             text=True,
         )
         print("ComfyUI-UML: pip install completed.")
+        return True
     except subprocess.CalledProcessError as e:
         print(
             "ComfyUI-UML: pip install failed (exit %d): %s"
             % (e.returncode, e.stderr.strip() if e.stderr else "see above"),
             file=sys.stderr,
         )
-        sys.exit(1)
+        return False
 
 
 def uv_available() -> bool:
@@ -77,4 +80,4 @@ def uv_available() -> bool:
 
 
 if __name__ == "__main__":
-    install()
+    sys.exit(0 if install() else 1)

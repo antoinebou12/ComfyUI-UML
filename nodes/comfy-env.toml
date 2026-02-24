@@ -1,0 +1,8 @@
+# Isolated env for ComfyUI-UML nodes (comfy-env).
+# See https://github.com/PozzettiAndrea/comfy-env
+
+python = "3.10"
+
+[pypi-dependencies]
+httpx = { version = ">=0.24.0" }
+kroki = { version = ">=0.1.6" }

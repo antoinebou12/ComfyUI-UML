@@ -3,11 +3,21 @@ ComFyUML — ComfyUI UML: custom nodes for generating diagrams via Kroki.
 """
 
 try:
-    from comfy_env import install
-
-    install()
+    import os as _os
+    if _os.environ.get("COMFYUI_UML_SKIP_COMFY_ENV", "").strip().lower() not in ("1", "true", "yes"):
+        from comfy_env import install
+        try:
+            install()
+        except Exception as e:
+            print("ComfyUI-UML: comfy_env install failed (nodes will still load): %s" % (e,))
 except ImportError:
-    pass
+    import os as _os
+    if _os.environ.get("COMFYUI_UML_SKIP_COMFY_ENV", "").strip().lower() not in ("1", "true", "yes"):
+        try:
+            from install import install as _local_install
+            _local_install()
+        except Exception as e:
+            print("ComfyUI-UML: local install failed (nodes will still load): %s" % (e,))
 
 import os
 import sys
@@ -17,7 +27,7 @@ _plugin_root = os.path.dirname(os.path.abspath(__file__))
 if _plugin_root not in sys.path:
     sys.path.insert(0, _plugin_root)
 
-from nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
 # Generate visibility mappings for comfy-dynamic-widgets (optional)
 try:
@@ -34,7 +44,7 @@ WEB_DIRECTORY = "./web"
 
 # Register API route for viewer "Save to ComfyUI" (writes to output/uml/)
 try:
-    from nodes.uml_routes import register_routes
+    from .nodes.uml_routes import register_routes
 
     register_routes()
 except Exception:
