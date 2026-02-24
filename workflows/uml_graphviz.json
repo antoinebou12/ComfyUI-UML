@@ -5,6 +5,7 @@
     {
       "id": 1,
       "type": "UMLDiagram",
+      "class_type": "UMLDiagram",
       "pos": [
         100,
         100

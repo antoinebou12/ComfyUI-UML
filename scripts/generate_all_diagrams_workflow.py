@@ -199,12 +199,38 @@ def _sanitize_groups(groups: list) -> list:
     return out
 
 
+def _node_ensure_class_type_after_type(node: dict) -> None:
+    """Ensure node has class_type (from type if missing) and place it right after 'type'
+    for API/graphToPrompt compatibility (some readers expect class_type early in the object).
+    Mutates node in place by reordering keys.
+    """
+    if not node or not isinstance(node, dict) or "type" not in node:
+        return
+    ct = node.get("class_type") or node["type"]
+    # Rebuild dict with class_type immediately after type so serialized JSON has correct order
+    new_node: dict = {}
+    for k, v in node.items():
+        if k == "class_type":
+            continue
+        new_node[k] = v
+        if k == "type":
+            new_node["class_type"] = ct
+    node.clear()
+    node.update(new_node)
+
+
 def normalize(data: dict) -> dict:
-    """Return a normalized copy of the workflow (links, groups, root keys)."""
+    """Return a normalized copy of the workflow (links, groups, root keys).
+    Ensures every node has class_type (from type if missing) for API/graphToPrompt compatibility,
+    with class_type placed immediately after type in the node object.
+    """
     if not data or not isinstance(data, dict):
         return data
 
     nodes = data.get("nodes") if isinstance(data.get("nodes"), list) else []
+    for node in nodes:
+        if node and isinstance(node, dict):
+            _node_ensure_class_type_after_type(node)
     data = dict(data)
     data["nodes"] = nodes
 
@@ -372,6 +398,7 @@ def build_single_node_workflow(diagram_type: str, type_index: int) -> dict:
     node = {
         "id": 1,
         "type": "UMLDiagram",
+        "class_type": "UMLDiagram",
         "pos": [100, 100],
         "size": [400, 300],
         "flags": {},
@@ -412,6 +439,7 @@ def run_generate() -> int:
             {
                 "id": i + 1,
                 "type": "UMLDiagram",
+                "class_type": "UMLDiagram",
                 "pos": [x, y],
                 "size": [400, 300],
                 "flags": {},

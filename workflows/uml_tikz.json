@@ -57,7 +57,8 @@
         22,
         "\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

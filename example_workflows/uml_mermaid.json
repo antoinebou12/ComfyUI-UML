@@ -57,7 +57,8 @@
         11,
         "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->John: Hello John, how are you?\n    loop Healthcheck\n        John->John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->Alice: Great!\n    John->Bob: How about you?\n    Bob-->John: Jolly good!",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

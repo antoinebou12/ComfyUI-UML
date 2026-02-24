@@ -49,13 +49,14 @@
       },
       "widgets_values": [
         "Generate a Mermaid diagram that illustrates: {{description}}",
-        "Kroki \u2013 Creates diagrams from textual descriptions!",
+        "Kroki – Creates diagrams from textual descriptions!",
         "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
         "Do not add any text outside the diagram syntax.",
         "kroki.txt",
         "mermaid",
         "svg"
-      ]
+      ],
+      "class_type": "LLMPromptEngine"
     },
     {
       "id": 2,
@@ -103,7 +104,8 @@
         "gpt-4o-mini",
         "",
         ""
-      ]
+      ],
+      "class_type": "LLMCall"
     },
     {
       "id": 3,
@@ -167,7 +169,8 @@
         11,
         "",
         1
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 4,
@@ -202,7 +205,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [
@@ -241,7 +245,7 @@
   ],
   "groups": [
     {
-      "title": "LLM \u2192 Kroki",
+      "title": "LLM → Kroki",
       "bound": [
         80,
         80,

@@ -57,7 +57,8 @@
         9,
         "{\"type\":\"excalidraw\",\"version\":2,\"elements\":[{\"type\":\"rectangle\",\"id\":\"r1\",\"x\":100,\"y\":100,\"width\":80,\"height\":40}],\"appState\":{}}",
         1
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

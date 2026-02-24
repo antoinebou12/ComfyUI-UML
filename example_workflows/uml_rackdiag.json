@@ -57,7 +57,8 @@
         17,
         "rackdiag {\n  16U;\n  1: UPS [2U];\n  3: DB Server;\n  4: Web Server;\n  5: Web Server;\n  6: Web Server;\n  7: Load Balancer;\n  8: L3 Switch;\n}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

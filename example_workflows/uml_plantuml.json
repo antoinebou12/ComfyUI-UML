@@ -57,7 +57,8 @@
         16,
         "@startuml\nleft to right direction\nskinparam packageStyle rectangle\nskinparam monochrome true\nactor customer\nactor clerk\nrectangle checkout {\n  customer -- (checkout)\n  (checkout) .> (payment) : include\n  (help) .> (checkout) : extends\n  (checkout) -- clerk\n}\n@enduml",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

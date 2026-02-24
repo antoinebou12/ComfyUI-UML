@@ -57,7 +57,8 @@
         14,
         "packetdiag {\n  colwidth = 32;\n  node_height = 72;\n\n  0-15: Source Port;\n  16-31: Destination Port;\n  32-63: Sequence Number;\n  64-95: Acknowledgment Number;\n  96-99: Data Offset;\n  100-103: Reserved;\n  104: CWR [rotate = 270];\n  105: ECE [rotate = 270];\n  106: URG [rotate = 270];\n  107: ACK [rotate = 270];\n  108: PSH [rotate = 270];\n  109: RST [rotate = 270];\n  110: SYN [rotate = 270];\n  111: FIN [rotate = 270];\n  112-127: Window;\n  128-143: Checksum;\n  144-159: Urgent Pointer;\n  160-191: (Options and Padding);\n  192-223: data [colheight = 3];\n}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

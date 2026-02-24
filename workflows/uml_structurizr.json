@@ -57,7 +57,8 @@
         19,
         "workspace \"Big Bank plc\" \"Example workspace.\" {\n    model {\n        customer = person \"Personal Banking Customer\" \"A customer of the bank.\" \"Customer\"\n        internetBankingSystem = softwaresystem \"Internet Banking System\" \"Allows customers to view accounts and make payments.\" {\n            webApplication = container \"Web Application\" \"Delivers the SPA.\" \"Java and Spring MVC\"\n            apiApplication = container \"API Application\" \"Provides API.\" \"Java and Spring MVC\"\n            database = container \"Database\" \"Stores data.\" \"Oracle Database Schema\"\n        }\n        customer -> webApplication \"Uses\" \"HTTPS\"\n        customer -> apiApplication \"Uses\" \"HTTPS\"\n        webApplication -> apiApplication \"Delivers\"\n        apiApplication -> database \"Reads from and writes to\" \"JDBC\"\n    }\n    views {\n        systemcontext internetBankingSystem \"SystemContext\" { include * }\n        container internetBankingSystem \"Containers\" { include * }\n    }\n}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

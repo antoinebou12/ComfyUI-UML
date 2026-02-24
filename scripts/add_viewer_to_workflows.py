@@ -111,6 +111,7 @@ def add_viewer_to_workflow(data: dict) -> bool:
     viewer_node = {
         "id": new_node_id,
         "type": "UMLViewerURL",
+        "class_type": "UMLViewerURL",
         "pos": viewer_pos,
         "size": [280, 80],
         "flags": {},

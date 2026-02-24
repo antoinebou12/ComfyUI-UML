@@ -57,7 +57,8 @@
         1,
         "blockdiag {\n  blockdiag -> generates -> \"block-diagrams\";\n  blockdiag -> is -> \"very easy!\";\n\n  blockdiag [color = \"greenyellow\"];\n  \"block-diagrams\" [color = \"pink\"];\n  \"very easy!\" [color = \"orange\"];\n}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

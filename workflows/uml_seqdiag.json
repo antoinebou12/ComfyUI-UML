@@ -57,7 +57,8 @@
         18,
         "seqdiag {\n  browser  -> webserver [label = \"GET /index.html\"];\n  browser <-- webserver;\n  browser  -> webserver [label = \"POST /blog/comment\"];\n  webserver  -> database [label = \"INSERT comment\"];\n  webserver <-- database;\n  browser <-- webserver;\n}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

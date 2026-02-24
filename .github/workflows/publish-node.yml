@@ -33,10 +33,9 @@ jobs:
         id: publish
         run: |
           set +e
-          out=$(comfy node publish --token "$REGISTRY_ACCESS_TOKEN" 2>&1)
-          code=$?
-          echo "$out"
-          if [ $code -ne 0 ] && echo "$out" | grep -q "already exists"; then
+          comfy node publish --token "$REGISTRY_ACCESS_TOKEN" 2>&1 | tee /tmp/publish.out
+          code=${PIPESTATUS[0]}
+          if [ $code -ne 0 ] && grep -q "already exists" /tmp/publish.out 2>/dev/null; then
             echo "Version already published; skipping."
             exit 0
           fi

@@ -57,7 +57,8 @@
         23,
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<umlet_diagram>\n    <element>\n        <type>com.umlet.element.custom.State</type>\n        <coordinates><x>140</x><y>60</y><w>150</w><h>40</h></coordinates>\n        <panel_attributes>read boarding pass</panel_attributes>\n    </element>\n    <element>\n        <type>com.umlet.element.custom.InitialState</type>\n        <coordinates><x>170</x><y>100</y><w>20</w><h>20</h></coordinates>\n    </element>\n</umlet_diagram>",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

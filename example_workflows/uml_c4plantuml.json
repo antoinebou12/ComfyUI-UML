@@ -57,7 +57,8 @@
         4,
         "@startuml\n!include C4_Context.puml\n\nLAYOUT_WITH_LEGEND()\n\ntitle System Context diagram for Internet Banking System\n\nPerson(customer, \"Personal Banking Customer\", \"A customer of the bank, with personal bank accounts.\")\nSystem(banking_system, \"Internet Banking System\", \"Allows customers to view information about their bank accounts, and make payments.\")\n\nSystem_Ext(mail_system, \"E-mail system\", \"The internal Microsoft Exchange e-mail system.\")\nSystem_Ext(mainframe, \"Mainframe Banking System\", \"Stores all of the core banking information about customers, accounts, transactions, etc.\")\n\nRel(customer, banking_system, \"Uses\")\nRel_Back(customer, mail_system, \"Sends e-mails to\")\nRel_Neighbor(banking_system, mail_system, \"Sends e-mails\", \"SMTP\")\nRel(banking_system, mainframe, \"Uses\")\n@enduml",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [

@@ -57,7 +57,8 @@
         24,
         "{\"$schema\":\"https://vega.github.io/schema/vega/v5.json\",\"width\":400,\"height\":200,\"data\":[{\"name\":\"t\",\"values\":[{\"a\":1}]}],\"marks\":[]}",
         0
-      ]
+      ],
+      "class_type": "UMLDiagram"
     },
     {
       "id": 2,
@@ -92,7 +93,8 @@
       "properties": {
         "Node name for S/R": "UMLViewerURL"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "class_type": "UMLViewerURL"
     }
   ],
   "links": [
