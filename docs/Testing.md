@@ -30,3 +30,19 @@ The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 ## Running comfy-test locally
 
 If you have [comfy-test](https://github.com/PozzettiAndrea/comfy-test) installed, you can run it from the ComfyUI-UML repo root (or from your ComfyUI install with this node in `custom_nodes/`). See the comfy-test repo for the exact CLI and environment setup.
+
+## Known issue: graphToPrompt validation failures
+
+Some workflow runs may fail with:
+
+```text
+Validation failed: graphToPrompt produced nodes without class_type: graphToPrompt: 1 nodes, missing class_type: [1], sample: {"inputs":{"UNKNOWN":0},"_meta":{}}
+```
+
+**Cause:** comfy-test validates the graph by calling ComfyUI's in-browser `graphToPrompt()` after loading the workflow. That conversion sometimes emits a node without a `class_type` field (e.g. `inputs` as `{"UNKNOWN":0}`). The **input** workflow JSON from this repo is valid (every node has `class_type`); the failure is in the **produced** API-format graph from the frontend.
+
+**What to do:**
+
+- Regenerate CPU workflows so they match the generator: `python scripts/generate_all_diagrams_workflow.py generate-cpu`.
+- If failures persist, this is likely a ComfyUI frontend or comfy-test interaction issue. Consider reporting to [comfy-test issues](https://github.com/PozzettiAndrea/comfy-test/issues) with the error message and sample, and optionally to [ComfyUI](https://github.com/Comfy-Org/ComfyUI) (e.g. issues around "node missing class_type" such as #5409).
+- If you find a ComfyUI or comfy-test version where this validation passes, document it here as a known-good combination.
