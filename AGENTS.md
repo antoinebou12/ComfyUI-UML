@@ -4,6 +4,8 @@ Short guidance for AI assistants and contributors working in this repository.
 
 ## Verify before you finish
 
+CI and **`nodes/comfy-env.toml`** target **Python 3.12** (see [`.github/workflows/pytest.yml`](.github/workflows/pytest.yml)).
+
 From the repository root:
 
 ```bash

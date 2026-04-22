@@ -34,7 +34,8 @@ class UMLLLMCodeGenerator:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("code_input",)
     FUNCTION = "run"
-    OUTPUT_NODE = False
+    # True so API prompt / comfy-test retain this node upstream of UMLDiagram (OUTPUT_NODE).
+    OUTPUT_NODE = True
 
     @classmethod
     def INPUT_TYPES(cls):

@@ -1224,9 +1224,8 @@ app.registerExtension({
   },
 });
 
-/** Ensure every node in graphToPrompt output has class_type and valid inputs so comfy-test validation passes. */
-function _normalizePromptNodes(promptObj) {
-  if (!promptObj || typeof promptObj !== "object") return;
+/** Shared graph lookups for graphToPrompt normalization (comfy-test / LiteGraph). */
+function _promptGraphHelpers() {
   const graphs = [app.canvas?.graph, app.graph].filter((g) => g && typeof g.getNodeById === "function");
   const getGraphNode = (id) => {
     const numId = Number(id);
@@ -1264,8 +1263,6 @@ function _normalizePromptNodes(promptObj) {
     const n = getGraphNode(id);
     return (n && (n.type || n.comfyClass)) || null;
   };
-  const hasInvalidInputs = (node) =>
-    node.inputs && typeof node.inputs === "object" && ("UNKNOWN" in node.inputs || Object.keys(node.inputs).length === 0);
   const buildInputsFromGraphNode = (graphNode) => {
     const inputs = {};
     const graphInputs = Array.isArray(graphNode.inputs) ? graphNode.inputs : [];
@@ -1287,6 +1284,62 @@ function _normalizePromptNodes(promptObj) {
     }
     return inputs;
   };
+  return { getGraphNode, getGraphLink, getLinkOriginTuple, getTypeFromGraph, buildInputsFromGraphNode };
+}
+
+/**
+ * graphToPrompt sometimes omits upstream nodes (e.g. STRING OUTPUT_NODE) while leaving
+ * wire tuples in downstream inputs → ComfyUI validate_prompt KeyError. Merge missing
+ * origins from the live graph until closure is complete.
+ */
+function _mergeMissingUpstreamNodes(promptObj) {
+  if (!promptObj || typeof promptObj !== "object" || Array.isArray(promptObj)) return;
+  const { getGraphNode, buildInputsFromGraphNode } = _promptGraphHelpers();
+  const promptHas = (id) => {
+    const s = String(id);
+    return Object.prototype.hasOwnProperty.call(promptObj, s) && promptObj[s] != null;
+  };
+  const wireOriginIdsFromNode = (node) => {
+    const out = [];
+    if (!node || typeof node.inputs !== "object" || node.inputs == null) return out;
+    for (const v of Object.values(node.inputs)) {
+      if (!Array.isArray(v) || v.length < 2) continue;
+      const raw = v[0];
+      if (typeof raw === "number" && Number.isFinite(raw)) out.push(String(raw));
+      else if (typeof raw === "string" && /^\d+$/.test(raw)) out.push(raw);
+    }
+    return out;
+  };
+  let added = true;
+  while (added) {
+    added = false;
+    const missing = new Set();
+    for (const node of Object.values(promptObj)) {
+      if (!node || typeof node !== "object") continue;
+      for (const oid of wireOriginIdsFromNode(node)) {
+        if (!promptHas(oid)) missing.add(oid);
+      }
+    }
+    for (const oid of missing) {
+      const gn = getGraphNode(oid);
+      if (!gn) continue;
+      const classType = gn.comfyClass || gn.type;
+      if (classType == null || classType === "") continue;
+      promptObj[oid] = {
+        class_type: classType,
+        inputs: buildInputsFromGraphNode(gn),
+      };
+      added = true;
+    }
+  }
+}
+
+/** Ensure every node in graphToPrompt output has class_type and valid inputs so comfy-test validation passes. */
+function _normalizePromptNodes(promptObj) {
+  if (!promptObj || typeof promptObj !== "object") return;
+  const { getGraphNode, getTypeFromGraph, buildInputsFromGraphNode } = _promptGraphHelpers();
+  const hasInvalidInputs = (node) =>
+    node.inputs && typeof node.inputs === "object" && ("UNKNOWN" in node.inputs || Object.keys(node.inputs).length === 0);
   const ensureNodeClassType = (node, id) => {
     if (!node || typeof node !== "object") return;
     if (node.class_type != null && node.class_type !== "") return;
@@ -1346,10 +1399,16 @@ function _installGraphToPromptNormalizer() {
       const result = original.apply(this, args);
       const patch = (value) => {
         if (!value || typeof value !== "object") return value;
-        _normalizePromptNodes(value);
-        if (value.output != null) _normalizePromptNodes(value.output); // comfy-test validates output[id].class_type
-        if (value.nodes != null) _normalizePromptNodes(value.nodes);
-        if (value.graph && value.graph.nodes != null) _normalizePromptNodes(value.graph.nodes);
+        const patchMap = (m) => {
+          if (m == null || typeof m !== "object" || Array.isArray(m)) return;
+          _normalizePromptNodes(m);
+          _mergeMissingUpstreamNodes(m);
+          _normalizePromptNodes(m);
+        };
+        patchMap(value);
+        if (value.output != null) patchMap(value.output); // comfy-test validates output[id].class_type
+        if (value.nodes != null) patchMap(value.nodes);
+        if (value.graph && value.graph.nodes != null) patchMap(value.graph.nodes);
         return value;
       };
       if (result && typeof result.then === "function") return result.then(patch);

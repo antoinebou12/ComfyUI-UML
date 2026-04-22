@@ -12,7 +12,7 @@
 
 | File | Note |
 |------|------|
-| `nodes/comfy-env.toml` | Comfy-env config for isolated node env (python 3.10, httpx, kroki). Portable has no comfy-env.toml under nodes. |
+| `nodes/comfy-env.toml` | Comfy-env config for isolated node env (python 3.12, httpx, kroki). Portable has no comfy-env.toml under nodes. |
 | `.ruff_cache/*` | Lint cache (optional, can ignore). |
 | `.venv/*` | Local venv (optional, can ignore). |
 

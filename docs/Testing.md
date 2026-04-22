@@ -30,6 +30,8 @@ When **ComfyUI-UML** lives inside the **[uml-mcp](https://github.com/antoinebou1
 
 [comfy-test](https://github.com/PozzettiAndrea/comfy-test) runs from [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) on **push** and **pull_request** to **`main`** / **`master`**. CI uses all **seven** upstream levels (`syntax` through `execution`, including **`static_capture`** and **`validation`**); see the level table in the [comfy-test README](https://github.com/PozzettiAndrea/comfy-test#test-levels). The workflow job must not set **`env`** next to **`uses:`** (GitHub rejects that for reusable workflows). The LLM workflow is mocked in Actions by default: **`use_mock_llm()`** in `nodes/uml_llm_shared.py` returns true when **`GITHUB_ACTIONS`** is set unless **`COMFY_UI_UML_MOCK_LLM`** is explicitly **`0`**, **`false`**, or **`no`**. Workflow JSON files under **`workflows/`** are executed according to the config below.
 
+This repository standardizes on **Python 3.12** (see **`nodes/comfy-env.toml`**, **pytest** / **CodeQL** workflows, and **`act-comfy-test-linux.yml`**). Do not pin **`comfy-env.toml`** **`python`** to a version **newer** than [comfy-test](https://github.com/PozzettiAndrea/comfy-test)’s matrix **`actions/setup-python`** in its **`_test-*.yml`** files, or the comfy-test **install** level fails before ComfyUI starts.
+
 ## Config: comfy-test.toml
 
 The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
@@ -54,7 +56,7 @@ If you have [comfy-test](https://github.com/PozzettiAndrea/comfy-test) installed
 
 [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) calls the external reusable **comfy-test** matrix, which then uses nested `uses: ./.github/workflows/_test-*.yml` paths **inside** that repository. **act** resolves those relative paths under **this** repo, so the full matrix workflow **cannot** be replayed locally with `act`.
 
-Use [`.github/workflows/act-comfy-test-linux.yml`](../.github/workflows/act-comfy-test-linux.yml) instead (**`workflow_dispatch` only**): it inlines a single Linux job (venv, ComfyUI clone, Playwright, server, `comfy_test run`). The workflow pins **Python 3.12** so `actions/setup-python` installs the **Ubuntu 22.04 / Jammy** toolchain, which matches **`ghcr.io/catthehacker/ubuntu:act-22.04`** (glibc 2.35). Newer Python builds that target glibc 2.38+ will fail at `python3 -m venv` with `GLIBC_2.38 not found` on that image.
+Use [`.github/workflows/act-comfy-test-linux.yml`](../.github/workflows/act-comfy-test-linux.yml) instead (**`workflow_dispatch` only**): it inlines a single Linux job (venv, ComfyUI clone, Playwright, server, `comfy_test run`). The workflow pins **Python 3.12**; **`ghcr.io/catthehacker/ubuntu:act-22.04`** matches the usual **setup-python** manylinux toolchain for that release.
 
 From the repo root, with Docker running:
 
@@ -81,6 +83,8 @@ Validation failed: graphToPrompt produced nodes without class_type: graphToPromp
 **Cause:** comfy-test validates the graph by calling ComfyUI's in-browser `graphToPrompt()` after loading the workflow. That conversion sometimes emits a node without a `class_type` field (e.g. `inputs` as `{"UNKNOWN":0}`). The **input** workflow JSON from this repo is valid (every node has `class_type`); the failure is in the **produced** API-format graph from the frontend.
 
 **In-repo fix:** The ComfyUI-UML extension patches `app.graphToPrompt` so that its return value is normalized: every node in the prompt gets `class_type` set (from the current graph node, or `_meta`, or type) when missing. This runs in the same extension as the workflow load normalizer (`ComfyUI-UML.workflowNormalizer`). After loading the extension, comfy-test’s validation should see valid nodes. If you still see the error, ensure the ComfyUI-UML frontend script is loaded (check for `[ComfyUI-UML] graphToPrompt normalizer installed` in the browser console when opening ComfyUI).
+
+**Missing upstream node (`KeyError`):** Some runs fail with `Prompt outputs failed validation` / `exception_during_validation` and a **`KeyError`** in ComfyUI `validate_prompt` (e.g. `prompt[o_id]['class_type']`) on **`UMLDiagram`** while the console still shows **`graphToPrompt: N nodes, missing class_type: []`**. That means **`graphToPrompt`** omitted an upstream id (often node **`1`** in **`uml_llm_ollama.json`**, **`UMLLLMCodeGenerator`**) but left **`[upstream_id, slot]`** wire tuples in **`code_input`**. The same extension pass merges those missing origins from the live LiteGraph into the API prompt map until the wire closure is complete (`_mergeMissingUpstreamNodes` in **`web/ComfyUI-UML.js`**).
 
 **If failures persist:**
 

@@ -29,7 +29,9 @@ jobs:
           queries: security-extended
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8
+        with:
+          python-version: "3.12"
 
       - name: Install project + dev deps for analysis
         run: uv sync --extra dev

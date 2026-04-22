@@ -2,7 +2,7 @@
 # (uses: ./.github/workflows/_test-*.yml) from PozzettiAndrea/comfy-test when the
 # caller is this repo. GitHub Actions still uses workflow-tests.yml + test-matrix.
 #
-# Local act pins Python 3.12: matches glibc on ghcr.io/catthehacker/ubuntu:act-22.04 (Jammy).
+# Local act: pin matches Python 3.12 (Jammy / act-22.04 glibc is enough for setup-python 3.12).
 # Run from repo root with Docker; pass -P so act does not prompt for a runner image:
 #
 #   act workflow_dispatch -W .github/workflows/act-comfy-test-linux.yml -j linux-test -P "ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-22.04"
@@ -39,7 +39,6 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          # 3.12: actions/setup-python installs the linux-22.04 build, matching act-22.04 (glibc 2.35).
           python-version: "3.12"
 
       # Resolve default-branch HEAD so requirements.txt matches what a fresh clone would use.
@@ -52,7 +51,7 @@ jobs:
           REQ_HASH=$(curl -fsSL "https://raw.githubusercontent.com/comfyanonymous/ComfyUI/${HEAD_SHA}/requirements.txt" | sha256sum | awk '{print $1}')
           echo "requirements_sha256=$REQ_HASH" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/uv
           key: uv-act-${{ runner.os }}-${{ steps.upstream.outputs.requirements_sha256 }}
@@ -60,7 +59,7 @@ jobs:
             uv-act-${{ runner.os }}-
 
       # Bump the key segment when changing the pinned Playwright version below.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: playwright-browsers
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}

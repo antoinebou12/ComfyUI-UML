@@ -1,7 +1,10 @@
 # Isolated env for ComfyUI-UML nodes (comfy-env).
 # See https://github.com/PozzettiAndrea/comfy-env
+#
+# Project pin: 3.12. Do not exceed PozzettiAndrea/comfy-test `_test-*.yml` setup-python
+# (newer than the runner breaks comfy-test install). 3.12 is below their current 3.13.
 
-python = "3.10"
+python = "3.12"
 
 [pypi-dependencies]
 httpx = { version = ">=0.24.0" }
