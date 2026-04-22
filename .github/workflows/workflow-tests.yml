@@ -1,17 +1,20 @@
 name: Workflow Tests
 on:
   pull_request:
-    branches: [main]
+    branches: [main, master]
   push:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: write
 
+# Jobs that call a reusable workflow with `uses:` cannot set `env` on the same job
+# (GitHub: invalid `uses` / missing runs-on). Reusable workflows do not inherit caller
+# job env. LLM mock in Actions defaults via use_mock_llm() when GITHUB_ACTIONS is set;
+# set COMFY_UI_UML_MOCK_LLM=0 to force real API calls (rare).
+
 jobs:
   test:
-    env:
-      COMFY_UI_UML_MOCK_LLM: "1"
     uses: PozzettiAndrea/comfy-test/.github/workflows/test-matrix.yml@main
     with:
       config-file: "comfy-test.toml"

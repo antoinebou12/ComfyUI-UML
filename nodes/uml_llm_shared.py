@@ -49,7 +49,19 @@ MOCK_LLM_RESPONSE = "graph LR\n  A[Kroki] --> B[Diagrams]"
 
 
 def use_mock_llm() -> bool:
-    return os.environ.get("COMFY_UI_UML_MOCK_LLM", "").strip() == "1"
+    """
+    Return True to skip real LLM HTTP calls (fixed Mermaid snippet).
+
+    Explicit COMFY_UI_UML_MOCK_LLM=1/0/true/false wins. When unset and GITHUB_ACTIONS is
+    true, default to mock: caller workflows cannot attach `env` to reusable workflow jobs,
+    so comfy-test would otherwise run the LLM workflow against a real provider.
+    """
+    raw = os.environ.get("COMFY_UI_UML_MOCK_LLM", "").strip().lower()
+    if raw in ("0", "false", "no"):
+        return False
+    if raw in ("1", "true", "yes"):
+        return True
+    return os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
 
 
 # --- LLM provider config ---

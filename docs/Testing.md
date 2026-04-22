@@ -28,13 +28,13 @@ When **ComfyUI-UML** lives inside the **[uml-mcp](https://github.com/antoinebou1
 
 ## Comfy-test
 
-[comfy-test](https://github.com/PozzettiAndrea/comfy-test) runs from [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) on **push** and **pull_request** to **`main`**, with **`COMFY_UI_UML_MOCK_LLM=1`** so the LLM workflow does not call a real model. Workflow JSON files under **`workflows/`** are executed according to the config below.
+[comfy-test](https://github.com/PozzettiAndrea/comfy-test) runs from [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) on **push** and **pull_request** to **`main`** / **`master`**. CI uses all **seven** upstream levels (`syntax` through `execution`, including **`static_capture`** and **`validation`**); see the level table in the [comfy-test README](https://github.com/PozzettiAndrea/comfy-test#test-levels). The workflow job must not set **`env`** next to **`uses:`** (GitHub rejects that for reusable workflows). The LLM workflow is mocked in Actions by default: **`use_mock_llm()`** in `nodes/uml_llm_shared.py` returns true when **`GITHUB_ACTIONS`** is set unless **`COMFY_UI_UML_MOCK_LLM`** is explicitly **`0`**, **`false`**, or **`no`**. Workflow JSON files under **`workflows/`** are executed according to the config below.
 
 ## Config: comfy-test.toml
 
 The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
-- **[test]** — `levels`: test levels from `syntax` through `install`, `registration`, `instantiation`, `execution`. `publish = true` enables publish checks.
+- **[test]** — `levels`: ordered comfy-test stages: **`syntax`**, **`install`**, **`registration`**, **`instantiation`**, **`static_capture`**, **`validation`**, **`execution`** (see [comfy-test README](https://github.com/PozzettiAndrea/comfy-test#test-levels)). `publish = true` enables publish checks.
 - **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. The suite runs all workflows: diagram-only, diagram+viewer (Mermaid, PlantUML), and the LLM (Ollama) workflow. The LLM workflow runs with **mocked LLM** in CI (see below).
 - **[test.platforms]** — which OSes to run on (linux, macos, windows, windows_portable).
 
@@ -44,7 +44,7 @@ The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
 ## Mock LLM for CI (uml_llm_ollama.json)
 
-When **COMFY_UI_UML_MOCK_LLM=1** is set (as in the Workflow Tests GitHub Action), **LLMCall** and **UML Code Assistant** return a fixed Mermaid snippet instead of calling Ollama/OpenAI/Anthropic. This allows the LLM workflow to run in CI without a real LLM. The mock response is defined in `nodes/uml_llm_shared.py` (`MOCK_LLM_RESPONSE`). To run the LLM workflow locally with the mock: set `COMFY_UI_UML_MOCK_LLM=1` in your environment before starting ComfyUI (or before running comfy-test).
+In **GitHub Actions**, **LLMCall** and **UML Code Assistant** use the mock unless **`COMFY_UI_UML_MOCK_LLM`** is set to **`0`**, **`false`**, or **`no`**. Locally, set **`COMFY_UI_UML_MOCK_LLM=1`** (or **`true`**) before ComfyUI or comfy-test to force the mock. The fixed snippet is **`MOCK_LLM_RESPONSE`** in `nodes/uml_llm_shared.py`.
 
 ## Running comfy-test locally
 
