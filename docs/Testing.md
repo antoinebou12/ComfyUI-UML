@@ -28,7 +28,7 @@ When **ComfyUI-UML** lives inside the **[uml-mcp](https://github.com/antoinebou1
 
 ## Comfy-test
 
-[comfy-test](https://github.com/PozzettiAndrea/comfy-test) runs from [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) on **push** and **pull_request** to **`main`** / **`master`**. CI uses all **seven** upstream levels (`syntax` through `execution`, including **`static_capture`** and **`validation`**); see the level table in the [comfy-test README](https://github.com/PozzettiAndrea/comfy-test#test-levels). The workflow job must not set **`env`** next to **`uses:`** (GitHub rejects that for reusable workflows). The LLM workflow is mocked in Actions by default: **`use_mock_llm()`** in `nodes/uml_llm_shared.py` returns true when **`GITHUB_ACTIONS`** is set unless **`COMFY_UI_UML_MOCK_LLM`** is explicitly **`0`**, **`false`**, or **`no`**. Workflow JSON files under **`workflows/`** are executed according to the config below.
+[comfy-test](https://github.com/PozzettiAndrea/comfy-test) runs from [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) on **push** and **pull_request** to **`main`** / **`master`**. CI uses all **seven** upstream levels (`syntax` through `execution`, including **`static_capture`** and **`validation`**); see the level table in the [comfy-test README](https://github.com/PozzettiAndrea/comfy-test#test-levels). The workflow job must not set **`env`** next to **`uses:`** (GitHub rejects that for reusable workflows). The comfy-test **`cpu`** list runs diagram workflows only; **`uml_llm_ollama.json`** is not included. When you run LLM nodes in **GitHub Actions**, **`use_mock_llm()`** in `nodes/uml_llm_shared.py` returns true when **`GITHUB_ACTIONS`** is set unless **`COMFY_UI_UML_MOCK_LLM`** is explicitly **`0`**, **`false`**, or **`no`**. Workflow JSON files under **`workflows/`** listed in the config are executed in CI.
 
 This repository standardizes on **Python 3.12** (see **`nodes/comfy-env.toml`**, **pytest** / **CodeQL** workflows, and **`act-comfy-test-linux.yml`**). Do not pin **`comfy-env.toml`** **`python`** to a version **newer** than [comfy-test](https://github.com/PozzettiAndrea/comfy-test)’s matrix **`actions/setup-python`** in its **`_test-*.yml`** files, or the comfy-test **install** level fails before ComfyUI starts.
 
@@ -37,16 +37,16 @@ This repository standardizes on **Python 3.12** (see **`nodes/comfy-env.toml`**,
 The root file [comfy-test.toml](../comfy-test.toml) controls how tests run:
 
 - **[test]** — `levels`: ordered comfy-test stages: **`syntax`**, **`install`**, **`registration`**, **`instantiation`**, **`static_capture`**, **`validation`**, **`execution`** (see [comfy-test README](https://github.com/PozzettiAndrea/comfy-test#test-levels)). `publish = true` enables publish checks.
-- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. The suite runs all workflows: diagram-only, diagram+viewer (Mermaid, PlantUML), and the LLM (Ollama) workflow. The LLM workflow runs with **mocked LLM** in CI (see below).
+- **[test.workflows]** — `timeout`: max seconds per workflow (default 300). `cpu`: list of workflow JSON filenames (under `workflows/`) to run on CPU. The suite runs diagram-only and diagram+viewer examples (Mermaid, PlantUML); **`uml_llm_ollama.json`** is kept in **`workflows/`** for manual loads only (see below).
 - **[test.platforms]** — which OSes to run on (linux, macos, windows, windows_portable).
 
 ## Adding workflows to the test suite
 
-1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The suite includes: **uml_single_diagram_only.json**, **uml_single_node.json**, **uml_mermaid.json**, **uml_plantuml.json**, and **uml_llm_ollama.json** (LLM workflow runs with mock, see below).
+1. Add the workflow JSON under **workflows/** and add its filename to the **cpu** array in **comfy-test.toml** and **pyproject.toml**. The default suite is: **uml_single_diagram_only.json**, **uml_single_node.json**, **uml_mermaid.json**, **uml_plantuml.json**.
 
-## Mock LLM for CI (uml_llm_ollama.json)
+## Mock LLM (optional `uml_llm_ollama.json`)
 
-In **GitHub Actions**, **LLMCall** and **UML Code Assistant** use the mock unless **`COMFY_UI_UML_MOCK_LLM`** is set to **`0`**, **`false`**, or **`no`**. Locally, set **`COMFY_UI_UML_MOCK_LLM=1`** (or **`true`**) before ComfyUI or comfy-test to force the mock. The fixed snippet is **`MOCK_LLM_RESPONSE`** in `nodes/uml_llm_shared.py`.
+**uml_llm_ollama.json** is not run by comfy-test in CI. When you load it (or other LLM graphs) in **GitHub Actions**, **LLMCall** and **UML Code Assistant** use the mock unless **`COMFY_UI_UML_MOCK_LLM`** is set to **`0`**, **`false`**, or **`no`**. Locally, set **`COMFY_UI_UML_MOCK_LLM=1`** (or **`true`**) before ComfyUI to force the mock. The fixed snippet is **`MOCK_LLM_RESPONSE`** in `nodes/uml_llm_shared.py`.
 
 ## Running comfy-test locally
 

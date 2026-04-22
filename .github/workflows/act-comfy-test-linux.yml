@@ -21,7 +21,6 @@ jobs:
       PYTHONFAULTHANDLER: "1"
       PW_TEST_SCREENSHOT_NO_FONTS_READY: "1"
       COMFY_ENV_DEBUG: "1"
-      COMFY_TEST_GPU: "0"
       COMFY_TEST_LOGS_DIR: ${{ github.workspace }}/comfy-test-logs
       COMFY_TEST_WORKSPACE_DIR: ${{ github.workspace }}/test_workspaces
       NODE_NAME: ${{ github.event.repository.name }}

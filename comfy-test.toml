@@ -14,13 +14,12 @@ publish = true
 
 [test.workflows]
 timeout = 300
-# All workflows: diagram-only and diagram+viewer (no LLM). LLM workflow is mocked in Actions (GITHUB_ACTIONS); see docs/Testing.md.
+# Diagram-only and diagram+viewer (Mermaid, PlantUML). LLM example lives in workflows/ but is not in this list; see docs/Testing.md.
 cpu = [
   "uml_single_diagram_only.json",
   "uml_single_node.json",
   "uml_mermaid.json",
   "uml_plantuml.json",
-  "uml_llm_ollama.json",
 ]
 
 [test.platforms]
@@ -28,3 +27,6 @@ linux = true
 macos = true
 windows = true
 windows_portable = true
+linux_gpu = false
+windows_gpu = false
+windows_portable_gpu = false

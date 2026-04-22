@@ -53,7 +53,7 @@ PublisherId = "antoinebou12"
 DisplayName = "ComfyUI-UML"
 Icon = "https://raw.githubusercontent.com/antoinebou12/ComfyUI-UML/main/icon.png"
 
-# Keep levels and cpu workflow list in sync with comfy-test.toml ([test] and [test.workflows]).
+# Keep levels, cpu workflow list, and platform toggles in sync with comfy-test.toml ([test], [test.workflows], [test.platforms]).
 [tool.comfy-test]
 levels = [
   "syntax",
@@ -68,13 +68,12 @@ publish = true
 
 [tool.comfy-test.workflows]
 timeout = 300
-# All workflows; LLM workflow is mocked in GitHub Actions by default (see docs/Testing.md, nodes/uml_llm_shared.py).
+# Same filenames as comfy-test.toml [test.workflows].cpu (diagram workflows only).
 cpu = [
   "uml_single_diagram_only.json",
   "uml_single_node.json",
   "uml_mermaid.json",
   "uml_plantuml.json",
-  "uml_llm_ollama.json",
 ]
 
 [tool.comfy-test.platforms]
@@ -82,3 +81,6 @@ linux = true
 macos = true
 windows = true
 windows_portable = true
+linux_gpu = false
+windows_gpu = false
+windows_portable_gpu = false

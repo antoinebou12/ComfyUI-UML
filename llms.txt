@@ -1,0 +1,36 @@
+# ComfyUI-UML
+
+> ComfyUI custom nodes: render Mermaid, PlantUML, Graphviz, D2, and other Kroki diagram types as images in workflows. Uses the Kroki HTTP API (optional local Mermaid/Graphviz), a built-in diagram viewer, and optional LLM nodes for diagram code generation.
+
+## For assistants and contributors
+
+Read [AGENTS.md](AGENTS.md) first: verification commands, risky-change checklist (Kroki client → UML node call chain), Context7 note for library APIs, and a layout map of important Python modules.
+
+## Human-facing documentation
+
+- [README.md](README.md): install, features, badges, table of contents
+- [docs/](docs/): usage, Kroki formats, workflows, testing, publishing, node reference
+- [docs/Testing.md](docs/Testing.md): local and CI testing
+- [docs/Usage.md](docs/Usage.md): nodes, viewer, backends, outputs
+- [docs/KrokiFormats.md](docs/KrokiFormats.md): diagram type × format matrix
+- [SECURITY.md](SECURITY.md): reporting security issues
+
+## Project facts
+
+- **Package:** `comfyui-uml` in [pyproject.toml](pyproject.toml); **Python** `>=3.12` (CI and [nodes/comfy-env.toml](nodes/comfy-env.toml) target 3.12).
+- **Primary code:** [nodes/](nodes/) — Kroki HTTP and options ([nodes/kroki_client.py](nodes/kroki_client.py)), UML Render node ([nodes/uml_diagram.py](nodes/uml_diagram.py)), HTTP routes ([nodes/uml_routes.py](nodes/uml_routes.py)), viewer URL ([nodes/uml_viewer_url.py](nodes/uml_viewer_url.py)), LLM-related nodes (`nodes/uml_llm_*.py`).
+- **Headless tests:** [conftest.py](conftest.py) sets `COMFYUI_UML_PYTEST=1` so the plugin does not load the full ComfyUI stack during pytest collection; see [tests/conftest.py](tests/conftest.py).
+- **Web / local Mermaid:** [web/js/](web/js/) (e.g. `npm ci` for renderer dependencies).
+- **Workflow / registry:** [comfy-test.toml](comfy-test.toml), [.github/workflows/](.github/workflows/).
+
+## Quick verify (from repo root)
+
+```bash
+uv sync --extra dev
+uv run ruff check .
+uv run pytest -q --tb=short
+```
+
+## Repository
+
+https://github.com/antoinebou12/ComfyUI-UML

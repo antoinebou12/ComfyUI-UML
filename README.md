@@ -92,7 +92,7 @@ Pre-commit will format JSON (key order preserved) and run Ruff (lint + format) o
 - **uml_single_node.json** — Single UMLDiagram + Diagram Viewer URL (kroki_url). Use this if you see "missing nodes" or queue errors with a pasted workflow.
 - **uml_mermaid.json** — Mermaid example: one UMLDiagram + Diagram Viewer URL (kroki_url).
 - **uml_plantuml.json** — PlantUML example: one UMLDiagram + Diagram Viewer URL (kroki_url).
-- **uml_llm_ollama.json** — LLM (Ollama) → Kroki: LLMPromptEngine → LLMCall → UMLDiagram → UMLViewerURL.
+- **uml_llm_ollama.json** — LLM (Ollama) → Kroki: LLMPromptEngine → LLMCall → UMLDiagram → UMLViewerURL (example; not in comfy-test **`cpu`** by default).
 
 To regenerate the workflow files and check that format lists stay in sync, run `python scripts/generate_all_diagrams_workflow.py` (no arguments).
 
