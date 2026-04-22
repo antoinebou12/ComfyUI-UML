@@ -5,7 +5,7 @@ Default (no subcommand): full pipeline — generate workflows, normalize, add vi
 non-CPU workflows, normalize again, then check that web/ComfyUI-UML.js SUPPORTED_FORMATS
 matches nodes/kroki_client.py. All workflow JSON is written with indent=2 and trailing
 newline. Exits 1 if formats are out of sync. The generate step produces only the
-reduced set: uml_single_diagram_only.json, uml_single_node.json, uml_mermaid.json, uml_plantuml.json, uml_llm_ollama.json.
+reduced set: uml_single_diagram_only.json (UMLDiagram + PreviewImage), uml_single_node.json, uml_mermaid.json, uml_plantuml.json, uml_llm_ollama.json.
 
   python scripts/generate_all_diagrams_workflow.py
 
@@ -873,6 +873,63 @@ def build_single_node_workflow(diagram_type: str) -> dict:
     }
 
 
+def build_uml_single_diagram_only_workflow(diagram_type: str) -> dict:
+    """CI diagram-only workflow: UMLDiagram → PreviewImage (IMAGE).
+
+    comfy-test's litegraph→API converter drops nodes with no connected outputs unless
+    object_info marks them as output_node; wiring IMAGE to PreviewImage keeps UMLDiagram
+    in the prompt. PreviewImage is a built-in OUTPUT_NODE in ComfyUI.
+    """
+    code = get_default_code(diagram_type)
+    fmt_idx = format_index(diagram_type)
+    fmt_str = FORMAT_ORDER[fmt_idx] if fmt_idx < len(FORMAT_ORDER) else "png"
+    outputs = [
+        {"name": "IMAGE", "type": "IMAGE", "links": [1], "slot_index": 0, "shape": 3},
+        {"name": "path", "type": "STRING", "links": None, "slot_index": 1, "shape": 3},
+        {"name": "kroki_url", "type": "STRING", "links": None, "slot_index": 2, "shape": 3},
+        {"name": "content_for_viewer", "type": "STRING", "links": None, "slot_index": 3, "shape": 3},
+        {"name": "viewer_url", "type": "STRING", "links": None, "slot_index": 4, "shape": 3},
+    ]
+    diagram_node = {
+        "id": 1,
+        "type": "UMLDiagram",
+        "class_type": "UMLDiagram",
+        "pos": [100, 100],
+        "size": [400, 300],
+        "flags": {},
+        "order": 0,
+        "mode": 0,
+        "outputs": outputs,
+        "properties": {"Node name for S/R": "UMLDiagram"},
+        "widgets_values": uml_diagram_widgets_values(diagram_type, code, fmt_str),
+        "inputs": [],
+    }
+    preview_node = {
+        "id": 2,
+        "type": "PreviewImage",
+        "class_type": "PreviewImage",
+        "pos": [100, 420],
+        "size": [220, 246],
+        "flags": {},
+        "order": 1,
+        "mode": 0,
+        "outputs": [],
+        "properties": {"Node name for S/R": "PreviewImage"},
+        "widgets_values": [],
+        "inputs": [{"name": "images", "type": "IMAGE", "link": 1}],
+    }
+    return {
+        "lastNodeId": 2,
+        "lastLinkId": 1,
+        "nodes": [diagram_node, preview_node],
+        "links": [_link_v04_tuple(1, 1, 0, 2, 0, "IMAGE")],
+        "groups": [],
+        "config": {},
+        "extra": {},
+        "version": 0.4,
+    }
+
+
 def _build_uml_single_node_workflow() -> dict:
     """Build uml_single_node.json: one UMLDiagram (blockdiag SVG) + one UMLViewerURL, one link.
     Minimal workflow for CI; avoids graphToPrompt link validation issues with multiple links."""
@@ -1273,8 +1330,8 @@ def run_generate() -> int:
     workflows_dir = root / "workflows"
     workflows_dir.mkdir(parents=True, exist_ok=True)
 
-    # Diagram-only workflow for CI: one UMLDiagram, no links; avoids graphToPrompt link validation on macOS.
-    uml_single_diagram_only_wf = normalize(build_single_node_workflow("blockdiag"))
+    # Diagram-only workflow for CI: UMLDiagram → PreviewImage (keeps graph in comfy-test API conversion).
+    uml_single_diagram_only_wf = normalize(build_uml_single_diagram_only_workflow("blockdiag"))
     _write_workflow_json(workflows_dir / "uml_single_diagram_only.json", uml_single_diagram_only_wf)
     logger.info("Wrote %s", workflows_dir / "uml_single_diagram_only.json")
 

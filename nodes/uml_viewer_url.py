@@ -68,7 +68,8 @@ class UMLViewerURL:
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("viewer_url", "viewer_url_iframe")
     FUNCTION = "run"
-    OUTPUT_NODE = False
+    # True so diagram→viewer chains stay in the execution closure alongside UMLDiagram (OUTPUT_NODE).
+    OUTPUT_NODE = True
 
     @classmethod
     def INPUT_TYPES(cls):

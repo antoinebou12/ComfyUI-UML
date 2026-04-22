@@ -280,9 +280,9 @@ class UMLDiagram:
     RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("IMAGE", "path", "kroki_url", "content_for_viewer", "viewer_url")
     FUNCTION = "run"
-    # False so outgoing wires (e.g. kroki_url → UMLViewerURL) stay in the LiteGraph link map;
-    # ComfyUI_frontend ExecutableNodeDTO / comfy-test execution validation use graph.getLink().
-    OUTPUT_NODE = False
+    # True so queued prompts have execution endpoints (ComfyUI / comfy-test: "Prompt has no outputs").
+    # Downstream nodes (e.g. UMLViewerURL) remain in the graph when they are also OUTPUT_NODE.
+    OUTPUT_NODE = True
 
     @classmethod
     def INPUT_TYPES(cls):

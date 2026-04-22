@@ -50,6 +50,12 @@ In **GitHub Actions**, **LLMCall** and **UML Code Assistant** use the mock unles
 
 If you have [comfy-test](https://github.com/PozzettiAndrea/comfy-test) installed, you can run it from the ComfyUI-UML repo root (or from your ComfyUI install with this node in `custom_nodes/`). See the comfy-test repo for the exact CLI and environment setup.
 
+## "Prompt has no outputs" (comfy-test validation)
+
+ComfyUI’s **`validate_prompt`** treats a workflow as runnable only if at least one node in the API prompt has **`OUTPUT_NODE = True`** on its Python class (same rule as the desktop app). **`UMLDiagram`** and **`UMLViewerURL`** therefore set **`OUTPUT_NODE = True`** so diagram-only and diagram→viewer graphs validate and execute under comfy-test.
+
+Separately, comfy-test converts litegraph JSON to API format with **`WorkflowConverter`**: nodes with **no connected outputs** can be dropped unless **`object_info`** marks them as output nodes. **`uml_single_diagram_only.json`** wires **`UMLDiagram.IMAGE`** into the built-in **`PreviewImage`** node so the converter always keeps **`UMLDiagram`** in the prompt. Regenerate that file with **`scripts/generate_all_diagrams_workflow.py`** (`build_uml_single_diagram_only_workflow`) after changing the pattern.
+
 ## Known issue: graphToPrompt validation failures
 
 Some workflow runs may fail with:
