@@ -1,0 +1,15 @@
+{
+  "frames": [
+    {
+      "file": "frame_000.jpg",
+      "time": 0.0,
+      "log": "Capturing execution frames: uml_plantuml.json"
+    },
+    {
+      "file": "frame_001.jpg",
+      "time": 3.7604787349700928,
+      "log": "Final screenshot"
+    }
+  ],
+  "total_time": 0.98
+}

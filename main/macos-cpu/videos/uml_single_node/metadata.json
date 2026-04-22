@@ -1,0 +1,15 @@
+{
+  "frames": [
+    {
+      "file": "frame_000.jpg",
+      "time": 0.0,
+      "log": "Capturing execution frames: uml_single_node.json"
+    },
+    {
+      "file": "frame_001.jpg",
+      "time": 3.5532407760620117,
+      "log": "Final screenshot"
+    }
+  ],
+  "total_time": 0.97
+}

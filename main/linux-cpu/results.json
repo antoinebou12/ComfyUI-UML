@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-04-22T22:58:53.700654+00:00",
+  "platform": "linux",
+  "hardware": {
+    "os": "Linux-6.17.0-1010-azure-x86_64-with-glibc2.39",
+    "cpu": "AMD EPYC 7763 64-Core Processor"
+  },
+  "commit_hash": "c8260189d01e9a238f2696cca01ec8ca6c2dd410",
+  "success": true,
+  "summary": {
+    "total": 5,
+    "passed": 4,
+    "failed": 0
+  },
+  "workflows": [
+    {
+      "name": "uml_llm_ollama",
+      "status": "skipped",
+      "duration_seconds": 0,
+      "error": "Not configured for CPU runner",
+      "hardware": null
+    },
+    {
+      "name": "uml_mermaid",
+      "status": "pass",
+      "duration_seconds": 9.96,
+      "error": null,
+      "hardware": {
+        "os": "Linux-6.17.0-1010-azure-x86_64-with-glibc2.39",
+        "cpu": "AMD EPYC 7763 64-Core Processor"
+      },
+      "resources": {
+        "ram": {
+          "peak": 2.12,
+          "avg": 2.08
+        },
+        "total_ram_gb": 15.6,
+        "samples": 10
+      }
+    },
+    {
+      "name": "uml_plantuml",
+      "status": "pass",
+      "duration_seconds": 9.31,
+      "error": null,
+      "hardware": {
+        "os": "Linux-6.17.0-1010-azure-x86_64-with-glibc2.39",
+        "cpu": "AMD EPYC 7763 64-Core Processor"
+      },
+      "resources": {
+        "ram": {
+          "peak": 2.14,
+          "avg": 2.1
+        },
+        "total_ram_gb": 15.6,
+        "samples": 10
+      }
+    },
+    {
+      "name": "uml_single_diagram_only",
+      "status": "pass",
+      "duration_seconds": 9.68,
+      "error": null,
+      "hardware": {
+        "os": "Linux-6.17.0-1010-azure-x86_64-with-glibc2.39",
+        "cpu": "AMD EPYC 7763 64-Core Processor"
+      },
+      "resources": {
+        "ram": {
+          "peak": 2.17,
+          "avg": 2.15
+        },
+        "total_ram_gb": 15.6,
+        "samples": 10
+      }
+    },
+    {
+      "name": "uml_single_node",
+      "status": "pass",
+      "duration_seconds": 9.56,
+      "error": null,
+      "hardware": {
+        "os": "Linux-6.17.0-1010-azure-x86_64-with-glibc2.39",
+        "cpu": "AMD EPYC 7763 64-Core Processor"
+      },
+      "resources": {
+        "ram": {
+          "peak": 2.18,
+          "avg": 2.11
+        },
+        "total_ram_gb": 15.6,
+        "samples": 10
+      }
+    }
+  ]
+}

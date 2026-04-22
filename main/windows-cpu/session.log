@@ -1,0 +1,129 @@
+[00:00] Crash dump logging enabled: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\crash_dump.log
+[00:00] 
+[00:00] [1/5] REGISTRATION
+[00:00] ----------------------------------------
+[00:00] [DEBUG] server=None, server_url=http://127.0.0.1:8188, api=None
+[00:00] 
+Connecting to existing server at http://127.0.0.1:8188...
+[00:00] Connecting to existing server at http://127.0.0.1:8188...
+[00:00] Connected to server! (attempt 1, 0.0s)
+[00:00] Checking for import errors in server logs...
+[00:00] No import errors detected
+[00:00] Found 684 registered nodes
+[00:00] [REGISTRATION] PASSED
+[00:00] 
+[00:00] [2/5] INSTANTIATION
+[00:00] ----------------------------------------
+[00:00] [DEBUG] server=<comfy_test.comfyui.server.ExternalComfyUIServer object at 0x000001F8FA4E0830>, server_url=http://127.0.0.1:8188, api=<comfy_test.comfyui.api.ComfyUIAPI object at 0x000001F8FA4E0980>
+[00:00] Testing node constructors...
+[00:03] All 5 node(s) instantiated successfully!
+[00:03] [INSTANTIATION] PASSED
+[00:03] 
+[00:03] [3/5] STATIC_CAPTURE
+[00:03] ----------------------------------------
+[00:03] [DEBUG] server=<comfy_test.comfyui.server.ExternalComfyUIServer object at 0x000001F8FA4E0830>, server_url=http://127.0.0.1:8188, api=<comfy_test.comfyui.api.ComfyUIAPI object at 0x000001F8FA4E0980>
+[00:03] Capturing 5 static screenshot(s)...
+[00:03] Starting headless browser...
+[00:04]   Downloading Mesa llvmpipe for Windows...
+[00:08]   Copied opengl32.dll to Chromium dir
+[00:08]   Copied libgallium_wgl.dll to Chromium dir
+[00:08]   Using Mesa llvmpipe (desktop GL) — multithreaded CPU rendering
+[00:09]   [1/5] STATIC uml_llm_ollama.json
+[00:09] Capturing: uml_llm_ollama.json
+[00:18]   Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\screenshots\uml_llm_ollama.png
+[00:18]   [2/5] STATIC uml_mermaid.json
+[00:18] Capturing: uml_mermaid.json
+[00:24]   Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\screenshots\uml_mermaid.png
+[00:24]   [3/5] STATIC uml_plantuml.json
+[00:24] Capturing: uml_plantuml.json
+[00:30]   Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\screenshots\uml_plantuml.png
+[00:30]   [4/5] STATIC uml_single_diagram_only.json
+[00:30] Capturing: uml_single_diagram_only.json
+[00:35]   Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\screenshots\uml_single_diagram_only.png
+[00:35]   [5/5] STATIC uml_single_node.json
+[00:35] Capturing: uml_single_node.json
+[00:42]   Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\screenshots\uml_single_node.png
+[00:42] [STATIC_CAPTURE] PASSED
+[00:42] 
+[00:42] [4/5] VALIDATION
+[00:42] ----------------------------------------
+[00:42] [DEBUG] server=<comfy_test.comfyui.server.ExternalComfyUIServer object at 0x000001F8FA4E0830>, server_url=http://127.0.0.1:8188, api=<comfy_test.comfyui.api.ComfyUIAPI object at 0x000001F8FA4E0980>
+[00:42] Validating 5 workflow(s)...
+[00:42]   [1/5] Validating uml_llm_ollama.json
+[00:42]     OK
+[00:42]   [2/5] Validating uml_mermaid.json
+[00:42]     OK
+[00:42]   [3/5] Validating uml_plantuml.json
+[00:42]     OK
+[00:42]   [4/5] Validating uml_single_diagram_only.json
+[00:42]     OK
+[00:42]   [5/5] Validating uml_single_node.json
+[00:42]     OK
+[00:42] [VALIDATION] PASSED
+[00:42] 
+[00:42] [5/5] EXECUTION
+[00:42] ----------------------------------------
+[00:42] [DEBUG] server=<comfy_test.comfyui.server.ExternalComfyUIServer object at 0x000001F8FA4E0830>, server_url=http://127.0.0.1:8188, api=<comfy_test.comfyui.api.ComfyUIAPI object at 0x000001F8FA4E0980>
+[00:42] CPU runner - will execute 4 workflow(s)
+[00:42] Running 5 workflow(s) (all with videos)...
+[00:42] Starting headless browser...
+[00:43]   Mesa llvmpipe DLLs already present
+[00:43]   Using Mesa llvmpipe (desktop GL) — multithreaded CPU rendering
+[00:43]   [1/5] SKIPPED (not in cpu list) uml_llm_ollama.json
+[00:44] Capturing execution frames: uml_mermaid.json
+[00:50]   Frame 1 saved (frame_000.jpg, t=0.0s)
+[00:50]   Validating workflow...
+[00:50]   Queuing workflow for execution...
+[00:52]   Frame 2 saved (frame_001.jpg, t=2.3s)
+[00:52]   [capture-periodic] freeze=4ms shot=160ms unfreeze=21ms saved=True
+[00:52]   Execution complete (t=2.6s)
+[00:52]   Captured 2 unique frames over 2.63s
+[00:52]   [debug] iframes: 2
+[00:52]   [debug]   iframe[0]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[00:52]   [debug]   iframe[1]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[00:52]   [timing] trigger_3d_previews: 0.0s
+[00:55]   Saved high-quality screenshot: uml_mermaid_executed.png
+[00:55]   [timing] final_screenshot: 0.7s
+[00:55] Capturing execution frames: uml_plantuml.json
+[01:02]   Frame 1 saved (frame_000.jpg, t=0.0s)
+[01:02]   Validating workflow...
+[01:02]   Queuing workflow for execution...
+[01:03]   Execution complete (t=1.3s)
+[01:03]   Captured 1 unique frames over 1.26s
+[01:03]   [debug] iframes: 2
+[01:03]   [debug]   iframe[0]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[01:03]   [debug]   iframe[1]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[01:03]   [timing] trigger_3d_previews: 0.0s
+[01:05]   Saved high-quality screenshot: uml_plantuml_executed.png
+[01:05]   [timing] final_screenshot: 0.7s
+[01:06] Capturing execution frames: uml_single_diagram_only.json
+[01:12]   Frame 1 saved (frame_000.jpg, t=0.0s)
+[01:12]   Validating workflow...
+[01:12]   Queuing workflow for execution...
+[01:13]   Node executed (1 total), capturing...
+[01:13]   Frame 2 saved (frame_001.jpg, t=1.5s)
+[01:13]   [capture-node] freeze=4ms shot=121ms unfreeze=5ms saved=True
+[01:13]   Execution complete (t=1.8s)
+[01:13]   Captured 2 unique frames over 1.8s
+[01:13]   [debug] iframes: 1
+[01:13]   [debug]   iframe[0]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[01:13]   [timing] trigger_3d_previews: 0.0s
+[01:16]   Saved high-quality screenshot: uml_single_diagram_only_executed.png
+[01:16]   [timing] final_screenshot: 0.7s
+[01:17] Capturing execution frames: uml_single_node.json
+[01:23]   Frame 1 saved (frame_000.jpg, t=0.0s)
+[01:23]   Validating workflow...
+[01:23]   Queuing workflow for execution...
+[01:24]   Execution complete (t=1.8s)
+[01:24]   Captured 1 unique frames over 1.78s
+[01:24]   [debug] iframes: 2
+[01:24]   [debug]   iframe[0]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[01:24]   [debug]   iframe[1]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+[01:24]   [timing] trigger_3d_previews: 0.0s
+[01:27]   Saved high-quality screenshot: uml_single_node_executed.png
+[01:27]   [timing] final_screenshot: 0.8s
+[01:28] Results saved to D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\results.json
+[01:28] Saved: D:\a\ComfyUI-UML\ComfyUI-UML\comfy-test-logs\UML-2257\windows-cpu\index.html
+[01:28] [EXECUTION] PASSED
+[01:28] 
+windows: PASSED

@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-04-22T22:58:54.434153+00:00",
+  "platform": "windows",
+  "hardware": {
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "cpu": "AMD64 Family 25 Model 17 Stepping 1, AuthenticAMD"
+  },
+  "commit_hash": "c8260189d01e9a238f2696cca01ec8ca6c2dd410",
+  "success": true,
+  "summary": {
+    "total": 5,
+    "passed": 4,
+    "failed": 0
+  },
+  "workflows": [
+    {
+      "name": "uml_llm_ollama",
+      "status": "skipped",
+      "duration_seconds": 0,
+      "error": "Not configured for CPU runner",
+      "hardware": null
+    },
+    {
+      "name": "uml_mermaid",
+      "status": "pass",
+      "duration_seconds": 11.51,
+      "error": null,
+      "hardware": {
+        "os": "Windows-2025Server-10.0.26100-SP0",
+        "cpu": "AMD64 Family 25 Model 17 Stepping 1, AuthenticAMD"
+      },
+      "resources": {
+        "ram": {
+          "peak": 4.84,
+          "avg": 4.48
+        },
+        "total_ram_gb": 16.0,
+        "samples": 12
+      }
+    },
+    {
+      "name": "uml_plantuml",
+      "status": "pass",
+      "duration_seconds": 10.02,
+      "error": null,
+      "hardware": {
+        "os": "Windows-2025Server-10.0.26100-SP0",
+        "cpu": "AMD64 Family 25 Model 17 Stepping 1, AuthenticAMD"
+      },
+      "resources": {
+        "ram": {
+          "peak": 4.85,
+          "avg": 4.76
+        },
+        "total_ram_gb": 16.0,
+        "samples": 11
+      }
+    },
+    {
+      "name": "uml_single_diagram_only",
+      "status": "pass",
+      "duration_seconds": 10.27,
+      "error": null,
+      "hardware": {
+        "os": "Windows-2025Server-10.0.26100-SP0",
+        "cpu": "AMD64 Family 25 Model 17 Stepping 1, AuthenticAMD"
+      },
+      "resources": {
+        "ram": {
+          "peak": 4.82,
+          "avg": 4.77
+        },
+        "total_ram_gb": 16.0,
+        "samples": 11
+      }
+    },
+    {
+      "name": "uml_single_node",
+      "status": "pass",
+      "duration_seconds": 10.65,
+      "error": null,
+      "hardware": {
+        "os": "Windows-2025Server-10.0.26100-SP0",
+        "cpu": "AMD64 Family 25 Model 17 Stepping 1, AuthenticAMD"
+      },
+      "resources": {
+        "ram": {
+          "peak": 4.89,
+          "avg": 4.78
+        },
+        "total_ram_gb": 16.0,
+        "samples": 11
+      }
+    }
+  ]
+}

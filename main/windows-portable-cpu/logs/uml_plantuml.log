@@ -1,0 +1,13 @@
+Capturing execution frames: uml_plantuml.json
+  Frame 1 saved (frame_000.jpg, t=0.0s)
+  Validating workflow...
+  Queuing workflow for execution...
+  Execution complete (t=1.4s)
+  Captured 1 unique frames over 1.41s
+  [debug] iframes: 2
+  [debug]   iframe[0]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+  [debug]   iframe[1]: src=http://127.0.0.1:8188/extensions/ComfyUI-UML/viewer.html?embed=1&url=https%3A%2F, canvas=0x0, rafFrozen=False
+  [timing] trigger_3d_previews: 0.0s
+  Saved high-quality screenshot: uml_plantuml_executed.png
+  [timing] final_screenshot: 0.7s
+    Captured 2 video frames
