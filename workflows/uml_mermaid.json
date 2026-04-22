@@ -60,11 +60,11 @@
         "Node name for S/R": "UMLDiagram"
       },
       "widgets_values": [
-        0,
+        "web",
         "https://kroki.io",
-        11,
+        "mermaid",
         "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->John: Hello John, how are you?\n    loop Healthcheck\n        John->John: Fight against hypochondria\n    end\n    Note right of John: Rational thoughts prevail...\n    John-->Alice: Great!\n    John->Bob: How about you?\n    Bob-->John: Jolly good!",
-        1
+        "svg"
       ],
       "inputs": []
     },

@@ -58,11 +58,11 @@
         "Node name for S/R": "UMLDiagram"
       },
       "widgets_values": [
-        0,
+        "web",
         "https://kroki.io",
-        1,
+        "blockdiag",
         "blockdiag {\n  blockdiag -> generates -> \"block-diagrams\";\n  blockdiag -> is -> \"very easy!\";\n\n  blockdiag [color = \"greenyellow\"];\n  \"block-diagrams\" [color = \"pink\"];\n  \"very easy!\" [color = \"orange\"];\n}",
-        0
+        "png"
       ],
       "inputs": []
     }

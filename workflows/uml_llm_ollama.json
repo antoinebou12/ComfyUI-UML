@@ -104,11 +104,11 @@
         "Node name for S/R": "UMLDiagram"
       },
       "widgets_values": [
-        0,
+        "web",
         "https://kroki.io",
-        11,
+        "mermaid",
         "",
-        1
+        "svg"
       ],
       "inputs": [
         {

@@ -60,11 +60,11 @@
         "Node name for S/R": "UMLDiagram"
       },
       "widgets_values": [
-        0,
+        "web",
         "https://kroki.io",
-        16,
+        "plantuml",
         "@startuml\nleft to right direction\nskinparam packageStyle rectangle\nskinparam monochrome true\nactor customer\nactor clerk\nrectangle checkout {\n  customer -- (checkout)\n  (checkout) .> (payment) : include\n  (help) .> (checkout) : extends\n  (checkout) -- clerk\n}\n@enduml",
-        1
+        "svg"
       ],
       "inputs": []
     },
