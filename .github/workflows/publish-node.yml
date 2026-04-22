@@ -1,4 +1,6 @@
 name: Publish to Comfy registry
+# The registry rejects re-publishing the same node version. Any push that edits pyproject.toml
+# on the default branch must bump [project].version (and run `uv lock`) so the publish is new.
 on:
   workflow_dispatch:
   push:
