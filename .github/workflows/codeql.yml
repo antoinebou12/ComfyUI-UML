@@ -29,7 +29,7 @@ jobs:
           queries: security-extended
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: Install project + dev deps for analysis
         run: uv sync --extra dev
