@@ -7,7 +7,8 @@
 - **diagram_type**: Choose from the supported Kroki diagram types.
 - **code**: Diagram source text. When **code_input** is connected (e.g. from an LLM), it overrides this widget.
 - **output_format**: `png`, `svg`, `jpeg`, `pdf`, `txt`, or `base64` — validated per type. See [KrokiFormats.md](KrokiFormats.md).
-- **diagram_options** (optional): JSON for Kroki (e.g. GraphViz `{"scale": 1.5}`, BlockDiag `{"antialias": ""}`, D2/PlantUML `{"theme": "dark"}`). See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
+- **diagram_options** (optional): Multiline **JSON object** for Kroki (e.g. GraphViz `{"scale": 1.5}`, BlockDiag `{"antialias": ""}`, D2/Mermaid/PlantUML `{"theme": "dark"}`). Invalid JSON or a non-object (e.g. a bare array) fails the run with a clear error. See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
+- **theme** (optional): Short theme name; merged into **diagram_options** for web Kroki and used for **local** Mermaid (`backend` = `local`) via the beautiful-mermaid integration.
 
 ## Outputs
 

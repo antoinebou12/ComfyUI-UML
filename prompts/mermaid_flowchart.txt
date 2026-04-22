@@ -1,0 +1,9 @@
+Produce a Mermaid **flowchart** or **graph** for: {{description}}
+
+The **UML Render** node must use diagram_type **mermaid**. Use a single top-level graph (e.g. flowchart TD or graph LR) with clear labels.
+
+---
+Output only valid Mermaid diagram lines. No markdown fences (no ```). No explanation.
+
+---
+Do not add prose outside Mermaid syntax. Keep node count reasonable (on the order of ~25 nodes or fewer).

@@ -6,6 +6,7 @@ import io
 import os
 import re
 import time
+from typing import Any
 
 import numpy as np
 import torch
@@ -19,6 +20,7 @@ from .kroki_client import (
     KrokiError,
     SUPPORTED_FORMATS,
     get_kroki_url,
+    kroki_options_from_widgets,
     render,
 )
 from .uml_viewer_url import VIEWER_PATH
@@ -123,6 +125,153 @@ def _raster_bytes_to_tensor(data: bytes) -> torch.Tensor:
     return torch.from_numpy(arr)[None, ...]
 
 
+def _send_node_progress(unique_id, prompt, value: int, max_val: int = 1) -> None:
+    """Notify ComfyUI executor of node progress when PromptServer is available."""
+    if unique_id is None:
+        return
+    try:
+        from server import PromptServer
+
+        if getattr(PromptServer, "instance", None) is None:
+            return
+        payload = {"node": unique_id, "value": value, "max": max_val}
+        prompt_id = None
+        if prompt is not None:
+            if isinstance(prompt, dict) and "prompt_id" in prompt:
+                prompt_id = prompt["prompt_id"]
+            elif isinstance(prompt, (list, tuple)) and len(prompt):
+                prompt_id = prompt[0]
+        if prompt_id is not None:
+            payload["prompt_id"] = prompt_id
+        PromptServer.instance.send_sync("progress", payload)
+    except Exception:
+        pass
+
+
+def _normalize_backend_str(backend: str | int) -> str:
+    if backend in (0, "0"):
+        return "web"
+    if backend in (1, "1"):
+        return "local"
+    return str(backend)
+
+
+def _resolve_code_for_run(code_input, code: str, diagram_type: str) -> str:
+    if code_input is not None:
+        return _normalize_to_code(code_input, diagram_type)
+    return _extract_diagram_block(_extract_mermaid_block((code or "").strip()), diagram_type)
+
+
+def _diagram_type_key_and_validate(diagram_type: str, output_format: str) -> str:
+    diagram_type_key = diagram_type.lower().strip()
+    allowed_formats = SUPPORTED_FORMATS.get(diagram_type_key, ["png", "svg"])
+    if output_format.lower().strip() not in allowed_formats:
+        raise RuntimeError(
+            f"Format '{output_format}' not supported for {diagram_type}. "
+            f"Allowed: {', '.join(allowed_formats)}"
+        )
+    return diagram_type_key
+
+
+def _save_diagram_bytes_to_output(
+    data: bytes, diagram_type: str, output_format: str
+) -> str:
+    """Write render bytes under output/uml/; return absolute filepath."""
+    try:
+        folder_paths = __import__("folder_paths", fromlist=["get_output_directory"])
+        output_dir = folder_paths.get_output_directory()
+    except Exception:
+        output_dir = os.path.expanduser("~/ComfyUI/output")
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except OSError as err:
+            raise RuntimeError(f"Failed to create output directory: {err}") from err
+
+    subdir = os.path.join(output_dir, "uml")
+    try:
+        os.makedirs(subdir, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(f"Failed to create output/uml directory: {e}") from e
+
+    ext_map = {
+        "png": "png",
+        "svg": "svg",
+        "jpeg": "jpeg",
+        "pdf": "pdf",
+        "txt": "txt",
+        "base64": "txt",
+    }
+    ext = ext_map.get(output_format, "png")
+    if output_format == "base64" and len(data) >= 8:
+        if data[:8] == b"\x89PNG\r\n\x1a\n":
+            ext = "png"
+        elif data.lstrip().startswith((b"<?xml", b"<svg")):
+            ext = "svg"
+    safe_type = diagram_type.replace("/", "_")[:20]
+    filename = f"uml_{safe_type}_{int(time.time() * 1000)}.{ext}"
+    filepath = os.path.join(subdir, filename)
+    try:
+        with open(filepath, "wb") as f:
+            f.write(data)
+    except OSError as e:
+        raise RuntimeError(f"Failed to write diagram to output/uml: {e}") from e
+    return filepath
+
+
+def _build_preview_image_tensor(
+    data: bytes,
+    output_format: str,
+    diagram_type_key: str,
+    kroki_url: str,
+    diagram_type: str,
+    code: str,
+    backend: str,
+    theme_for_render: str | None,
+    kroki_opts: dict[str, Any] | None,
+) -> torch.Tensor:
+    """IMAGE tensor from primary render bytes; may re-fetch png/svg for non-raster previews."""
+    if output_format == "png" and len(data) >= 8 and data[:8] == b"\x89PNG\r\n\x1a\n":
+        return _raster_bytes_to_tensor(data)
+    if output_format == "jpeg" and len(data) >= 2 and data[:2] == b"\xff\xd8":
+        return _raster_bytes_to_tensor(data)
+    if output_format == "svg" and data.lstrip().startswith((b"<?xml", b"<svg")):
+        return _svg_bytes_to_tensor(data) or _placeholder_tensor()
+
+    image_tensor = _placeholder_tensor()
+    allowed = SUPPORTED_FORMATS.get(diagram_type_key, ["png", "svg"])
+    if "png" in allowed:
+        try:
+            png_data = render(
+                kroki_url=kroki_url,
+                diagram_type=diagram_type,
+                diagram_source=code,
+                output_format="png",
+                backend=backend,
+                theme=theme_for_render,
+                diagram_options=kroki_opts,
+            )
+            if png_data and len(png_data) >= 8 and png_data[:8] == b"\x89PNG\r\n\x1a\n":
+                image_tensor = _raster_bytes_to_tensor(png_data)
+        except Exception:
+            pass
+    elif "svg" in allowed:
+        try:
+            svg_data = render(
+                kroki_url=kroki_url,
+                diagram_type=diagram_type,
+                diagram_source=code,
+                output_format="svg",
+                backend=backend,
+                theme=theme_for_render,
+                diagram_options=kroki_opts,
+            )
+            if svg_data and svg_data.lstrip().startswith((b"<?xml", b"<svg")):
+                image_tensor = _svg_bytes_to_tensor(svg_data) or image_tensor
+        except Exception:
+            pass
+    return image_tensor
+
+
 class UMLDiagram:
     """Render diagram source (Mermaid, PlantUML, etc.) to IMAGE and save file."""
 
@@ -161,6 +310,20 @@ class UMLDiagram:
                     ["png", "svg", "jpeg", "pdf", "txt", "base64"],
                     {"default": "png"},
                 ),
+                "diagram_options": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                    },
+                ),
+                "theme": (
+                    "STRING",
+                    {
+                        "multiline": False,
+                        "default": "",
+                    },
+                ),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -194,49 +357,19 @@ class UMLDiagram:
         unique_id=None,
         prompt=None,
     ):
-        if backend in (0, "0"):
-            backend = "web"
-        elif backend in (1, "1"):
-            backend = "local"
-        if code_input is not None:
-            code = _normalize_to_code(code_input, diagram_type)
-        else:
-            code = _extract_diagram_block(_extract_mermaid_block((code or "").strip()), diagram_type)
+        backend = _normalize_backend_str(backend)
+        code = _resolve_code_for_run(code_input, code, diagram_type)
         if not (code or "").strip():
             code = get_default_code(diagram_type)
 
-        diagram_type_key = diagram_type.lower().strip()
-        allowed_formats = SUPPORTED_FORMATS.get(diagram_type_key, ["png", "svg"])
-        if output_format.lower().strip() not in allowed_formats:
-            raise RuntimeError(
-                f"Format '{output_format}' not supported for {diagram_type}. "
-                f"Allowed: {', '.join(allowed_formats)}"
-            )
+        diagram_type_key = _diagram_type_key_and_validate(diagram_type, output_format)
 
-        # theme and diagram_options removed from UI; keep params for backward compatibility with saved workflows
-        def _send_progress(value: int, max_val: int = 1) -> None:
-            # Progress payload: node is required; prompt_id included when provided by executor (see Messages docs).
-            if unique_id is None:
-                return
-            try:
-                from server import PromptServer
+        try:
+            kroki_opts, theme_for_render = kroki_options_from_widgets(diagram_options, theme)
+        except ValueError as e:
+            raise RuntimeError(str(e)) from e
 
-                if getattr(PromptServer, "instance", None) is None:
-                    return
-                payload = {"node": unique_id, "value": value, "max": max_val}
-                prompt_id = None
-                if prompt is not None:
-                    if isinstance(prompt, dict) and "prompt_id" in prompt:
-                        prompt_id = prompt["prompt_id"]
-                    elif isinstance(prompt, (list, tuple)) and len(prompt):
-                        prompt_id = prompt[0]
-                if prompt_id is not None:
-                    payload["prompt_id"] = prompt_id
-                PromptServer.instance.send_sync("progress", payload)
-            except Exception:
-                pass
-
-        _send_progress(0, 1)
+        _send_node_progress(unique_id, prompt, 0, 1)
         try:
             data = render(
                 kroki_url=kroki_url,
@@ -244,106 +377,37 @@ class UMLDiagram:
                 diagram_source=code,
                 output_format=output_format,
                 backend=backend,
-                theme=None,
-                diagram_options=None,
+                theme=theme_for_render,
+                diagram_options=kroki_opts,
             )
         except KrokiError as e:
             raise RuntimeError(f"Kroki error: {e}") from e
         except Exception as e:
             raise RuntimeError(f"Kroki error: {e}") from e
         finally:
-            _send_progress(1, 1)
+            _send_node_progress(unique_id, prompt, 1, 1)
 
-        # Shareable Kroki GET URL (same format as JS pako)
         kroki_url_out = get_kroki_url(
             kroki_url=kroki_url,
             diagram_type=diagram_type,
             diagram_source=code,
             output_format=output_format,
-            diagram_options=None,
+            diagram_options=kroki_opts,
         )
 
-        # Save to ComfyUI output directory
-        try:
-            folder_paths = __import__("folder_paths", fromlist=["get_output_directory"])
-            output_dir = folder_paths.get_output_directory()
-        except Exception:
-            output_dir = os.path.expanduser("~/ComfyUI/output")
-            try:
-                os.makedirs(output_dir, exist_ok=True)
-            except OSError as err:
-                raise RuntimeError(f"Failed to create output directory: {err}") from err
+        filepath = _save_diagram_bytes_to_output(data, diagram_type, output_format)
 
-        subdir = os.path.join(output_dir, "uml")
-        try:
-            os.makedirs(subdir, exist_ok=True)
-        except OSError as e:
-            raise RuntimeError(f"Failed to create output/uml directory: {e}") from e
-
-        ext_map = {
-            "png": "png",
-            "svg": "svg",
-            "jpeg": "jpeg",
-            "pdf": "pdf",
-            "txt": "txt",
-            "base64": "txt",
-        }
-        ext = ext_map.get(output_format, "png")
-        if output_format == "base64" and len(data) >= 8:
-            if data[:8] == b"\x89PNG\r\n\x1a\n":
-                ext = "png"
-            elif data.lstrip().startswith((b"<?xml", b"<svg")):
-                ext = "svg"
-        safe_type = diagram_type.replace("/", "_")[:20]
-        filename = f"uml_{safe_type}_{int(time.time() * 1000)}.{ext}"
-        filepath = os.path.join(subdir, filename)
-        try:
-            with open(filepath, "wb") as f:
-                f.write(data)
-        except OSError as e:
-            raise RuntimeError(f"Failed to write diagram to output/uml: {e}") from e
-
-        # IMAGE output: raster (png/jpeg), SVG via cairosvg, or auto-convert from another format
-        if output_format == "png" and len(data) >= 8 and data[:8] == b"\x89PNG\r\n\x1a\n":
-            image_tensor = _raster_bytes_to_tensor(data)
-        elif output_format == "jpeg" and len(data) >= 2 and data[:2] == b"\xff\xd8":
-            image_tensor = _raster_bytes_to_tensor(data)
-        elif output_format == "svg" and data.lstrip().startswith((b"<?xml", b"<svg")):
-            image_tensor = _svg_bytes_to_tensor(data) or _placeholder_tensor()
-        else:
-            # Auto-convert: when saved format is pdf/txt/base64 (or SVG failed), render PNG/SVG for preview
-            image_tensor = _placeholder_tensor()
-            allowed = SUPPORTED_FORMATS.get(diagram_type_key, ["png", "svg"])
-            if "png" in allowed:
-                try:
-                    png_data = render(
-                        kroki_url=kroki_url,
-                        diagram_type=diagram_type,
-                        diagram_source=code,
-                        output_format="png",
-                        backend=backend,
-                        theme=None,
-                        diagram_options=None,
-                    )
-                    if png_data and len(png_data) >= 8 and png_data[:8] == b"\x89PNG\r\n\x1a\n":
-                        image_tensor = _raster_bytes_to_tensor(png_data)
-                except Exception:
-                    pass
-            elif "svg" in allowed:
-                try:
-                    svg_data = render(
-                        kroki_url=kroki_url,
-                        diagram_type=diagram_type,
-                        diagram_source=code,
-                        output_format="svg",
-                        backend=backend,
-                        theme=None,
-                        diagram_options=None,
-                    )
-                    if svg_data and svg_data.lstrip().startswith((b"<?xml", b"<svg")):
-                        image_tensor = _svg_bytes_to_tensor(svg_data) or image_tensor
-                except Exception:
-                    pass
+        image_tensor = _build_preview_image_tensor(
+            data,
+            output_format,
+            diagram_type_key,
+            kroki_url,
+            diagram_type,
+            code,
+            backend,
+            theme_for_render,
+            kroki_opts,
+        )
 
         # content_for_viewer: raw SVG string for ComfyUI_Viewer, else path or kroki_url
         if output_format == "svg" and data.lstrip().startswith((b"<?xml", b"<svg")):

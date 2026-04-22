@@ -48,14 +48,21 @@ class LLMPromptEngine:
                     "STRING",
                     {
                         "multiline": True,
-                        "default": "Output only valid Mermaid diagram code. No markdown fences (no ```). No explanation.",
+                        "default": (
+                            "Output only valid diagram code for the requested diagram_type. "
+                            "Match Kroki expectations (e.g. Mermaid: start with diagram keyword). "
+                            "No prose outside the DSL."
+                        ),
                     },
                 ),
                 "negative": (
                     "STRING",
                     {
                         "multiline": True,
-                        "default": "Do not add any text outside the diagram syntax.",
+                        "default": (
+                            "No markdown code fences (no ```). No preamble or postamble. "
+                            "No YAML front matter. No alternative diagrams."
+                        ),
                     },
                 ),
                 "template_file": (template_file_choices, {"default": ""}),

@@ -1,0 +1,9 @@
+Produce a PlantUML **sequence** diagram (participants, lifelines, messages top-to-bottom, activations) for: {{description}}
+
+The **UML Render** node must use diagram_type **plantuml**. Use @startuml … @enduml with valid sequence syntax.
+
+---
+Output only PlantUML source between @startuml and @enduml. No markdown fences (no ```). No explanation.
+
+---
+Do not add text outside the diagram. Close every activate with a matching deactivate.

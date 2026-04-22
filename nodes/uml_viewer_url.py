@@ -24,7 +24,9 @@ def _normalize_url(value: object) -> str:
         return ""
     if isinstance(value, str):
         return value.strip()
-    if isinstance(value, (tuple, list)) and len(value):
+    if isinstance(value, (tuple, list)):
+        if not value:
+            return ""
         return _normalize_url(value[0])
     for attr in ("text", "assistant_response", "content", "output"):
         if hasattr(value, attr):

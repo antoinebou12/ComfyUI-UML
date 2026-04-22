@@ -1,33 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
-  "managers": [
-    "pyproject",
-    "npm"
-  ],
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "timezone": "Etc/UTC",
+  "labels": ["dependencies"],
   "packageRules": [
     {
-      "matchUpdateTypes": [
-        "patch",
-        "minor"
-      ],
-      "groupName": "patch and minor"
+      "description": "Dependabot updates Python (pyproject/uv); skip duplicates from Renovate.",
+      "matchManagers": ["pep621", "pip_requirements", "pip_setup", "setup-cfg"],
+      "enabled": false
+    },
+    {
+      "description": "Dependabot updates web/js npm; skip duplicates from Renovate.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["web/js/package.json"],
+      "enabled": false
     }
-  ],
-  "npm": {
-    "packageRules": [
-      {
-        "matchPaths": [
-          "web/js/package.json"
-        ],
-        "groupName": "web/js npm"
-      }
-    ]
-  },
-  "schedule": [
-    "before 6am on monday"
-  ],
-  "automerge": false
+  ]
 }

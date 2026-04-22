@@ -3,6 +3,7 @@ Kroki client for ComfyUI-UML: web API (POST/GET) and optional local renderers.
 """
 
 import base64
+import json
 import os
 import shutil
 import subprocess
@@ -108,6 +109,40 @@ def _validate_type_format(diagram_type: str, output_format: str) -> None:
             f"Format '{output_format}' not supported for {diagram_type}. "
             f"Supported: {', '.join(allowed)}"
         )
+
+
+def parse_diagram_options_json(raw: Optional[str]) -> dict[str, Any]:
+    """Parse optional Kroki ``diagram_options`` JSON from a ComfyUI STRING widget. Empty → ``{}``."""
+    s = (raw or "").strip()
+    if not s:
+        return {}
+    try:
+        obj = json.loads(s)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"diagram_options must be valid JSON: {e}") from e
+    if obj is None:
+        return {}
+    if not isinstance(obj, dict):
+        raise ValueError(
+            'diagram_options must be a JSON object, e.g. {"theme": "dark", "scale": 1.5}'
+        )
+    return {str(k): v for k, v in obj.items()}
+
+
+def kroki_options_from_widgets(
+    diagram_options: Optional[str],
+    theme: Optional[str],
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """
+    Build ``(diagram_options_dict, theme_for_local)`` for :func:`render` / :func:`get_kroki_url`.
+    Theme widget value is merged into the options dict for web Kroki and returned for local Mermaid.
+    """
+    merged = parse_diagram_options_json(diagram_options)
+    t = (theme or "").strip()
+    if t:
+        merged = {**merged, "theme": t}
+    opts: Optional[dict[str, Any]] = merged if merged else None
+    return opts, t or None
 
 
 def _decode_base64_response(output_format: str, content: bytes) -> bytes:

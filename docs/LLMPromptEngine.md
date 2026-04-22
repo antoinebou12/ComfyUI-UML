@@ -20,4 +20,16 @@ Builds an LLM prompt from a template and positive/negative instructions. Optiona
 
 ## Usage
 
-Use **template_file** to load presets from **prompts/** (e.g. `general_mermaid.txt`, `kroki_logo.txt`). Connect **prompt** to **LLM Call** and **LLM Call** → **text** to **UML Render** → **code_input** for a full LLM → diagram pipeline.
+Use **template_file** to load presets from **prompts/** (e.g. `general_mermaid.txt`, `kroki.txt`, `uml_plan_then_code.txt`). Connect **prompt** to **LLM Call** and **LLM Call** → **text** to **UML Render** → **code_input** for a full LLM → diagram pipeline.
+
+### Plan-then-code presets
+
+- **`uml_plan_then_code.txt`** — Aligns with uml-mcp’s plan-first flow: scope limits, Kroki **backend** name (`{{diagram_type}}`) must match **UML Render**, then DSL-only output (same spirit as the **`uml_diagram_with_thinking`** MCP prompt).
+- **`plantuml_sequence.txt`** — Sequence-focused PlantUML; set **UML Render** → **diagram_type** to **plantuml**.
+- **`mermaid_flowchart.txt`** — Flowchart/graph Mermaid; set **diagram_type** to **mermaid**.
+
+### uml-mcp vs this stack
+
+**uml-mcp** uses logical types (`class`, `sequence`, …) and tools like **`generate_uml`**. **ComfyUI-UML** uses **Kroki backend** strings in **UML Render** (`plantuml`, `mermaid`, …). Presets spell this out so the LLM does not confuse MCP logical names with Comfy **diagram_type** widgets.
+
+See [UMLDiagram.md](UMLDiagram.md) for parameter details.

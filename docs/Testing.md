@@ -1,8 +1,34 @@
 # Testing
 
+## Run pytest locally
+
+From the repository root (with [uv](https://docs.astral.sh/uv/) installed):
+
+```bash
+uv sync --extra dev
+uv run pytest
+uv run ruff check .
+```
+
+Or with **pip**: `pip install -e ".[dev]"` then `pytest` and `ruff check .`.
+
+Tests live under **`tests/`** (routes, URL helpers; no full ComfyUI install required).
+
+The repo root **`conftest.py`** sets **`COMFYUI_UML_PYTEST=1`** so the ComfyUI plugin **`__init__.py`** skips loading the full node stack (torch/numpy) during pytest. You do not need to set this manually when using pytest from this repository.
+
+For contributor and AI-agent workflow (verification commands, ordered checklist for risky changes, Context7 for deps), see **[AGENTS.md](../AGENTS.md)**.
+
+## Pytest (this repository)
+
+GitHub Actions runs **`uv sync --extra dev`**, **`ruff check`**, **`pytest`**, and **`npm ci`** in **`web/js`** on **push** and **pull_request** to **`main`** / **`master`** via [`.github/workflows/pytest.yml`](../.github/workflows/pytest.yml).
+
+## Pytest (uml-mcp monorepo)
+
+When **ComfyUI-UML** lives inside the **[uml-mcp](https://github.com/antoinebou12/uml-mcp)** repository, GitHub Actions runs **`pytest ComfyUI-UML/tests`** via [`.github/workflows/comfyui-uml.yml`](https://github.com/antoinebou12/uml-mcp/blob/main/.github/workflows/comfyui-uml.yml) on changes under **`ComfyUI-UML/`** or **`uml-skill/`** (and supports **workflow_dispatch** for manual runs). Agent-facing steps also live in **uml-skill** [`references/COMFYUI-TESTS.md`](https://github.com/antoinebou12/uml-mcp/blob/main/uml-skill/references/COMFYUI-TESTS.md).
+
 ## Comfy-test
 
-CI runs [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to `main`. Workflows under `workflows/` are executed according to the config.
+[comfy-test](https://github.com/PozzettiAndrea/comfy-test) runs from [`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) on **push** and **pull_request** to **`main`**, with **`COMFY_UI_UML_MOCK_LLM=1`** so the LLM workflow does not call a real model. Workflow JSON files under **`workflows/`** are executed according to the config below.
 
 ## Config: comfy-test.toml
 

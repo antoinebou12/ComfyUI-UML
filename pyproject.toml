@@ -37,6 +37,8 @@ Documentation = "https://github.com/antoinebou12/ComfyUI-UML#readme"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+# Avoid importing the repo-root ComfyUI plugin __init__ (torch/numpy) during collection.
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
 target-version = "py310"
@@ -51,6 +53,7 @@ PublisherId = "antoinebou12"
 DisplayName = "ComfyUI-UML"
 Icon = "https://raw.githubusercontent.com/antoinebou12/ComfyUI-UML/main/icon.png"
 
+# Keep cpu workflow list in sync with comfy-test.toml [test.workflows].cpu.
 [tool.comfy-test]
 levels = ["syntax", "install", "registration", "instantiation", "execution"]
 publish = true

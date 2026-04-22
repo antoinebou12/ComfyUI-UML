@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-comfyui--uml-blue)](https://registry.comfy.org/publishers/antoinebou12/nodes/comfyui-uml)
+[![Pytest](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/pytest.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/pytest.yml)
 [![Workflow Tests](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/workflow-tests.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/workflow-tests.yml)
 [![Publish to Comfy registry](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/publish-node.yml/badge.svg)](https://github.com/antoinebou12/ComfyUI-UML/actions/workflows/publish-node.yml)
 
@@ -25,6 +26,8 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - [Updating](#updating)
 - [Usage](#usage)
 - [Testing](#testing)
+- [Security](#security)
+- [Contributing](#contributing)
 - [Development](#development)
 - [Workflows](#workflows)
 - [Troubleshooting](#troubleshooting)
@@ -41,7 +44,7 @@ ComfyUI custom nodes for rendering diagrams (Mermaid, PlantUML, Graphviz, etc.) 
 - **Diagram options**: Optional JSON for quality/theme (e.g. GraphViz scale, Mermaid/PlantUML/D2 theme). See [Kroki diagram options](https://docs.kroki.io/kroki/setup/diagram-options/).
 - **Shareable Kroki URL** and **built-in viewer** (zoom, Save to ComfyUI, copy link).
 - **ComfyUI_Viewer**: For **iframe embedding of a Kroki URL**, use the viewer in embed mode: `viewer.html?embed=1&url=...` or the Diagram Viewer URL node’s **viewer_url_iframe** output (connect **kroki_url** from UML Render to Diagram Viewer URL). The Diagram Viewer URL node also shows a **live diagram preview** inside the node when **kroki_url** is set.
-- **Local Mermaid**: Backend "local" + [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for offline SVG/PNG; optional theme.
+- **Local Mermaid**: Backend `local` + [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) in `web/js` (run `npm ci` there once) for offline SVG/PNG; optional **theme** on the node or in **diagram_options**.
 - **Local Graphviz**: Optional when the `graphviz` Python package is installed.
 
 See [docs/Usage.md](docs/Usage.md) and [docs/KrokiFormats.md](docs/KrokiFormats.md) for details.
@@ -58,7 +61,7 @@ comfy node install comfyui-uml
 
 1. Clone or copy this folder into `ComfyUI/custom_nodes/`.
 2. Install dependencies: `pip install -r requirements.txt` or `uv sync`.
-3. **Optional** — Local Mermaid: Node.js + `cd scripts && npm install`. PNG: `pip install cairosvg`. SVG preview in node: `pip install cairosvg`. Dynamic widget visibility: `pip install comfy-dynamic-widgets` (or extras from pyproject.toml).
+3. **Optional** — **Local Mermaid** (`backend` = local): install [Node.js](https://nodejs.org/) (LTS), then from this folder run `cd web/js && npm ci` (or `npm install`) so `beautiful-mermaid` is available for [web/js/render_mermaid.mjs](web/js/render_mermaid.mjs). **PNG** preview for SVG in the node: `pip install cairosvg`. **Dynamic widget visibility:** `pip install comfy-dynamic-widgets` (or extras from `pyproject.toml`).
 
 ## Updating
 
@@ -72,7 +75,7 @@ Full usage, outputs, viewer, and LLM workflow: [docs/Usage.md](docs/Usage.md). D
 
 ## Testing
 
-CI runs [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to `main`. See [docs/Testing.md](docs/Testing.md) for config ([comfy-test.toml](comfy-test.toml)) and adding workflows.
+CI runs **pytest**, **Ruff**, and **`npm ci`** in [`web/js`](web/js) ([`.github/workflows/pytest.yml`](.github/workflows/pytest.yml)), plus [comfy-test](https://github.com/PozzettiAndrea/comfy-test) on push/PR to `main` / `master`. Locally: `uv sync --extra dev`, then `uv run pytest`, `uv run ruff check .`, and optionally `cd web/js && npm ci`. See [docs/Testing.md](docs/Testing.md) for details, [comfy-test.toml](comfy-test.toml), and [AGENTS.md](AGENTS.md) for agent/contributor workflow (including headless pytest notes).
 
 ## Development
 
@@ -98,6 +101,14 @@ Full list, loading tips, and format: [docs/Workflows.md](docs/Workflows.md). Wor
 ## License
 
 MIT. See repository license.
+
+## Security
+
+Report vulnerabilities per [SECURITY.md](SECURITY.md) (private advisories preferred).
+
+## Contributing
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for dev setup, tests, and dependency automation (Dependabot / Renovate). For AI assistants and deeper change workflow (ordered checklist, Context7 for libraries), see [AGENTS.md](AGENTS.md).
 
 ## Author
 

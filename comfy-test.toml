@@ -1,3 +1,4 @@
+# Keep [test.workflows].cpu in sync with [tool.comfy-test.workflows].cpu in pyproject.toml.
 [test]
 # Test levels: syntax -> install -> registration -> instantiation -> execution
 levels = ["syntax", "install", "registration", "instantiation", "execution"]
