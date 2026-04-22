@@ -90,7 +90,7 @@ jobs:
       - name: Install comfy-test
         run: $VENV/bin/uv pip install comfy-test
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ${{ env.COMFYUI_DIR }}/custom_nodes/${{ github.event.repository.name }}
 
