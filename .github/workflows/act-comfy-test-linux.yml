@@ -1,0 +1,141 @@
+# Local "act" only: nektos/act cannot resolve nested reusable workflows
+# (uses: ./.github/workflows/_test-*.yml) from PozzettiAndrea/comfy-test when the
+# caller is this repo. GitHub Actions still uses workflow-tests.yml + test-matrix.
+#
+# Local act pins Python 3.12: matches glibc on ghcr.io/catthehacker/ubuntu:act-22.04 (Jammy).
+# Run from repo root with Docker; pass -P so act does not prompt for a runner image:
+#
+#   act workflow_dispatch -W .github/workflows/act-comfy-test-linux.yml -j linux-test -P "ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-22.04"
+name: Act — comfy-test (Linux CPU)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux-test:
+    name: linux-test (act)
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+      PW_TEST_SCREENSHOT_NO_FONTS_READY: "1"
+      COMFY_ENV_DEBUG: "1"
+      COMFY_TEST_GPU: "0"
+      COMFY_TEST_LOGS_DIR: ${{ github.workspace }}/comfy-test-logs
+      COMFY_TEST_WORKSPACE_DIR: ${{ github.workspace }}/test_workspaces
+      NODE_NAME: ${{ github.event.repository.name }}
+      COMFYUI_DIR: ${{ github.workspace }}/ComfyUI
+      VENV: ${{ github.workspace }}/.venv
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright
+      # Bind mounts (act on Windows) often cannot hardlink; avoids uv copy warnings.
+      UV_LINK_MODE: copy
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL &
+          sudo apt-get clean &
+          wait
+
+      - uses: actions/setup-python@v5
+        with:
+          # 3.12: actions/setup-python installs the linux-22.04 build, matching act-22.04 (glibc 2.35).
+          python-version: "3.12"
+
+      # Resolve default-branch HEAD so requirements.txt matches what a fresh clone would use.
+      # (We do not cache the ComfyUI checkout: post-job cache would include custom_nodes after checkout.)
+      - name: ComfyUI requirements fingerprint
+        id: upstream
+        run: |
+          set -euo pipefail
+          HEAD_SHA=$(git ls-remote https://github.com/comfyanonymous/ComfyUI.git HEAD | awk '{print $1}')
+          REQ_HASH=$(curl -fsSL "https://raw.githubusercontent.com/comfyanonymous/ComfyUI/${HEAD_SHA}/requirements.txt" | sha256sum | awk '{print $1}')
+          echo "requirements_sha256=$REQ_HASH" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-act-${{ runner.os }}-${{ steps.upstream.outputs.requirements_sha256 }}
+          restore-keys: |
+            uv-act-${{ runner.os }}-
+
+      # Bump the key segment when changing the pinned Playwright version below.
+      - uses: actions/cache@v4
+        id: playwright-browsers
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: pw-act-${{ runner.os }}-chromium-1.58.0
+          restore-keys: |
+            pw-act-${{ runner.os }}-chromium-
+
+      - name: Create venv and install uv
+        run: |
+          python3 -m venv $VENV
+          $VENV/bin/pip install uv
+
+      - name: Clone ComfyUI
+        run: git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git "$COMFYUI_DIR"
+
+      - name: Install ComfyUI requirements
+        run: $VENV/bin/uv pip install -r $COMFYUI_DIR/requirements.txt
+
+      - name: Install Playwright
+        run: |
+          $VENV/bin/uv pip install "playwright==1.58.0"
+          if [ "${{ steps.playwright-browsers.outputs.cache-hit }}" != "true" ]; then
+            $VENV/bin/python -m playwright install chromium
+          else
+            echo "Playwright browsers restored from cache; skipping download."
+          fi
+          $VENV/bin/python -m playwright install-deps chromium || true
+
+      - name: Install comfy-test
+        run: $VENV/bin/uv pip install comfy-test
+
+      - uses: actions/checkout@v4
+        with:
+          path: ${{ env.COMFYUI_DIR }}/custom_nodes/${{ github.event.repository.name }}
+
+      - name: Install node dependencies
+        working-directory: ${{ env.COMFYUI_DIR }}/custom_nodes/${{ env.NODE_NAME }}
+        run: |
+          [ -f requirements.txt ] && $VENV/bin/uv pip install -r requirements.txt || true
+          [ -f install.py ] && $VENV/bin/python install.py || true
+
+      - name: Install validate endpoint
+        run: git clone --depth 1 https://github.com/PozzettiAndrea/ComfyUI-validate-endpoint.git "$COMFYUI_DIR/custom_nodes/ComfyUI-validate-endpoint" || true
+
+      - name: Start ComfyUI server
+        working-directory: ${{ env.COMFYUI_DIR }}
+        run: |
+          mkdir -p "$COMFY_TEST_LOGS_DIR"
+          $VENV/bin/python -u main.py --listen 127.0.0.1 --port 8188 --cpu > "$COMFY_TEST_LOGS_DIR/server.log" 2>&1 &
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for server
+        run: |
+          for i in $(seq 1 300); do
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "Server process died!"
+              cat "$COMFY_TEST_LOGS_DIR/server.log" || true
+              exit 1
+            fi
+            if curl -s http://127.0.0.1:8188/system_stats > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              echo "=== Server startup log ==="
+              cat "$COMFY_TEST_LOGS_DIR/server.log" || true
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          cat "$COMFY_TEST_LOGS_DIR/server.log" || true
+          exit 1
+
+      - name: Run tests
+        working-directory: ${{ env.COMFYUI_DIR }}/custom_nodes/${{ env.NODE_NAME }}
+        run: $VENV/bin/python -m comfy_test run --server-url http://127.0.0.1:8188
+
+      - name: Stop server
+        if: always()
+        run: kill $SERVER_PID 2>/dev/null || true

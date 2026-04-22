@@ -50,6 +50,20 @@ In **GitHub Actions**, **LLMCall** and **UML Code Assistant** use the mock unles
 
 If you have [comfy-test](https://github.com/PozzettiAndrea/comfy-test) installed, you can run it from the ComfyUI-UML repo root (or from your ComfyUI install with this node in `custom_nodes/`). See the comfy-test repo for the exact CLI and environment setup.
 
+## Local act (nektos/act)
+
+[`.github/workflows/workflow-tests.yml`](../.github/workflows/workflow-tests.yml) calls the external reusable **comfy-test** matrix, which then uses nested `uses: ./.github/workflows/_test-*.yml` paths **inside** that repository. **act** resolves those relative paths under **this** repo, so the full matrix workflow **cannot** be replayed locally with `act`.
+
+Use [`.github/workflows/act-comfy-test-linux.yml`](../.github/workflows/act-comfy-test-linux.yml) instead (**`workflow_dispatch` only**): it inlines a single Linux job (venv, ComfyUI clone, Playwright, server, `comfy_test run`). The workflow pins **Python 3.12** so `actions/setup-python` installs the **Ubuntu 22.04 / Jammy** toolchain, which matches **`ghcr.io/catthehacker/ubuntu:act-22.04`** (glibc 2.35). Newer Python builds that target glibc 2.38+ will fail at `python3 -m venv` with `GLIBC_2.38 not found` on that image.
+
+From the repo root, with Docker running:
+
+```powershell
+act workflow_dispatch -W .github/workflows/act-comfy-test-linux.yml -j linux-test -P "ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-22.04"
+```
+
+On **PowerShell**, `act` may emit info lines to **stderr**, which can surface as `NativeCommandError` even when the job continues; that is cosmetic. You can use `$ErrorActionPreference = 'Continue'` for the session if the noise is distracting.
+
 ## "Prompt has no outputs" (comfy-test validation)
 
 ComfyUI’s **`validate_prompt`** treats a workflow as runnable only if at least one node in the API prompt has **`OUTPUT_NODE = True`** on its Python class (same rule as the desktop app). **`UMLDiagram`** and **`UMLViewerURL`** therefore set **`OUTPUT_NODE = True`** so diagram-only and diagram→viewer graphs validate and execute under comfy-test.
