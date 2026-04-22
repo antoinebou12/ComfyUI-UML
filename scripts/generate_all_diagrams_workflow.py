@@ -65,25 +65,88 @@ def _import_nodes_submodule(name: str, filename: str):
 # -----------------------------------------------------------------------------
 
 
+def _link_v04_tuple(
+    link_id: int,
+    origin_id: int | str,
+    origin_slot: int,
+    target_id: int | str,
+    target_slot: int,
+    link_type: str,
+) -> list:
+    """Workflow JSON 0.4 canonical link: [id, origin_id, origin_slot, target_id, target_slot, type]."""
+    return [link_id, origin_id, origin_slot, target_id, target_slot, link_type]
+
+
+def _ensure_links_v04_tuples(links: object) -> list[list]:
+    """Coerce dict-shaped links to v0.4 6-tuples; pass through valid tuples (ComfyUI graph.getLink)."""
+    if not isinstance(links, list):
+        return []
+    out: list[list] = []
+    for item in links:
+        if isinstance(item, (list, tuple)) and _is_valid_v04_link_tuple(item):
+            out.append(list(item))
+            continue
+        if not isinstance(item, dict):
+            continue
+        try:
+            lid = item["id"]
+            oid = item["origin_id"]
+            oslot = item["origin_slot"]
+            tid = item["target_id"]
+            tslot = item["target_slot"]
+            typ = item.get("type")
+        except (KeyError, TypeError):
+            continue
+        if lid is None or oid is None or tid is None:
+            continue
+        try:
+            out.append(
+                _link_v04_tuple(
+                    int(lid),
+                    int(oid),
+                    int(oslot),
+                    int(tid),
+                    int(tslot),
+                    str(typ) if typ is not None else "STRING",
+                )
+            )
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _is_valid_v04_link_tuple(item: object) -> bool:
+    if not isinstance(item, (list, tuple)) or len(item) != 6:
+        return False
+    a, b, c, d, e, f = item
+    for x in (a, b, c, d, e):
+        if not isinstance(x, (int, float, str)):
+            return False
+    return isinstance(f, (str, int, float))
+
+
 def _is_links_corrupted(links: list) -> bool:
     if not isinstance(links, list):
         return True
     if len(links) == 0:
         return False
-    first = links[0]
-    if isinstance(first, list):
+    dicts = [L for L in links if isinstance(L, dict)]
+    tuples = [L for L in links if isinstance(L, (list, tuple))]
+    if len(dicts) + len(tuples) != len(links):
         return True
-    if first is not None and isinstance(first, dict):
-        required = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type"}
-        for link in links:
-            if not link or not isinstance(link, dict):
-                return True
-            if not required.issubset(link.keys()):
-                return True
-            if link.get("origin_id") is None and link.get("target_id") is None:
-                return True
-        return False
-    return True
+    if dicts and tuples:
+        return True
+    if tuples:
+        return not all(_is_valid_v04_link_tuple(L) for L in tuples)
+    required = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type"}
+    for link in dicts:
+        if not link or not isinstance(link, dict):
+            return True
+        if not required.issubset(link.keys()):
+            return True
+        if link.get("origin_id") is None and link.get("target_id") is None:
+            return True
+    return False
 
 
 def _node_rect(node: dict) -> list[float] | None:
@@ -101,7 +164,7 @@ def _node_rect(node: dict) -> list[float] | None:
     return None
 
 
-def _rebuild_links(nodes: list) -> list[dict]:
+def _rebuild_links(nodes: list) -> list[list]:
     id_to_origin: dict[int | str, tuple[int | str, int, str]] = {}
     id_to_target: dict[int | str, tuple[int | str, int]] = {}
 
@@ -136,22 +199,13 @@ def _rebuild_links(nodes: list) -> list[dict]:
     link_ids = sorted(
         set(id_to_origin.keys()) | set(id_to_target.keys()), key=lambda x: (type(x).__name__, x)
     )
-    links = []
+    links: list[list] = []
     for link_id in link_ids:
         orig = id_to_origin.get(link_id)
         tgt = id_to_target.get(link_id)
         if not orig or not tgt:
             continue
-        links.append(
-            {
-                "id": link_id,
-                "origin_id": orig[0],
-                "origin_slot": orig[1],
-                "target_id": tgt[0],
-                "target_slot": tgt[1],
-                "type": orig[2],
-            }
-        )
+        links.append(_link_v04_tuple(link_id, orig[0], orig[1], tgt[0], tgt[1], str(orig[2])))
     return links
 
 
@@ -291,12 +345,21 @@ def normalize(data: dict) -> dict:
     else:
         data["links"] = links
 
+    data["links"] = _ensure_links_v04_tuples(data.get("links") or [])
+
     last_link = (
         data.get("lastLinkId") if data.get("lastLinkId") is not None else data.get("last_link_id")
     )
     if data.get("links") and (last_link is None or last_link == 0):
         try:
-            last_link = max(int(link.get("id") or 0) for link in data["links"])
+            lids = []
+            for link in data["links"]:
+                if isinstance(link, (list, tuple)) and len(link) >= 1:
+                    lids.append(int(link[0] or 0))
+                elif isinstance(link, dict):
+                    lids.append(int(link.get("id") or 0))
+            if lids:
+                last_link = max(lids)
         except (ValueError, TypeError):
             pass
     if last_link is not None:
@@ -327,6 +390,11 @@ def normalize(data: dict) -> dict:
     if data.get("extra") is None:
         data["extra"] = {}
     if data.get("version") is None:
+        data["version"] = 0.4
+    if data.get("links") and all(
+        isinstance(item, (list, tuple)) and _is_valid_v04_link_tuple(item)
+        for item in data["links"]
+    ):
         data["version"] = 0.4
 
     return data
@@ -475,7 +543,9 @@ def _max_node_id(nodes: list) -> int:
 def _max_link_id(links: list) -> int:
     m = 0
     for L in links or []:
-        if L and isinstance(L.get("id"), (int, float)):
+        if isinstance(L, (list, tuple)) and len(L) >= 1 and isinstance(L[0], (int, float)):
+            m = max(m, int(L[0]))
+        elif isinstance(L, dict) and isinstance(L.get("id"), (int, float)):
             m = max(m, int(L["id"]))
     return m
 
@@ -538,14 +608,7 @@ def _add_viewer_to_workflow(data: dict) -> bool:
     }
     nodes.append(viewer_node)
 
-    link = {
-        "id": new_link_id,
-        "origin_id": first_uml_id,
-        "origin_slot": 2,
-        "target_id": new_node_id,
-        "target_slot": 0,
-        "type": "STRING",
-    }
+    link = _link_v04_tuple(new_link_id, first_uml_id, 2, new_node_id, 0, "STRING")
     links = data.get("links")
     if not isinstance(links, list):
         links = []
@@ -859,9 +922,7 @@ def _build_uml_single_node_workflow() -> dict:
             "inputs": [{"name": "kroki_url", "type": "STRING", "link": 1}],
         },
     ]
-    links = [
-        {"id": 1, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 0, "type": "STRING"},
-    ]
+    links = [_link_v04_tuple(1, 1, 2, 2, 0, "STRING")]
 
     return normalize({
         "lastNodeId": 2,
@@ -921,9 +982,7 @@ def _build_uml_mermaid_workflow() -> dict:
             "inputs": [{"name": "kroki_url", "type": "STRING", "link": 1}],
         },
     ]
-    links = [
-        {"id": 1, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 0, "type": "STRING"},
-    ]
+    links = [_link_v04_tuple(1, 1, 2, 2, 0, "STRING")]
     return normalize({
         "lastNodeId": 2,
         "lastLinkId": 1,
@@ -982,9 +1041,7 @@ def _build_uml_plantuml_workflow() -> dict:
             "inputs": [{"name": "kroki_url", "type": "STRING", "link": 1}],
         },
     ]
-    links = [
-        {"id": 1, "origin_id": 1, "origin_slot": 2, "target_id": 2, "target_slot": 0, "type": "STRING"},
-    ]
+    links = [_link_v04_tuple(1, 1, 2, 2, 0, "STRING")]
     return normalize({
         "lastNodeId": 2,
         "lastLinkId": 1,
@@ -1055,14 +1112,7 @@ def _build_uml_single_node_multi_workflow() -> dict:
             "widgets_values": [],
             "inputs": [{"name": "kroki_url", "type": "STRING", "link": link_id}],
         })
-        links.append({
-            "id": link_id,
-            "origin_id": diagram_id,
-            "origin_slot": 2,
-            "target_id": viewer_id,
-            "target_slot": 0,
-            "type": "STRING",
-        })
+        links.append(_link_v04_tuple(link_id, diagram_id, 2, viewer_id, 0, "STRING"))
 
     return normalize({
         "lastNodeId": 6,
@@ -1155,14 +1205,7 @@ def _build_viewer_formats_test_workflow() -> dict:
             "widgets_values": [],
             "inputs": [{"name": "kroki_url", "type": "STRING", "link": link_id}],
         })
-        links.append({
-            "id": link_id,
-            "origin_id": diagram_id,
-            "origin_slot": 2,
-            "target_id": viewer_id,
-            "target_slot": 0,
-            "type": "STRING",
-        })
+        links.append(_link_v04_tuple(link_id, diagram_id, 2, viewer_id, 0, "STRING"))
 
     # Plantuml: txt (diagram id 4, viewer id 8, link id 4)
     i = 3
@@ -1201,14 +1244,7 @@ def _build_viewer_formats_test_workflow() -> dict:
         "widgets_values": [],
         "inputs": [{"name": "kroki_url", "type": "STRING", "link": link_id}],
     })
-    links.append({
-        "id": link_id,
-        "origin_id": diagram_id,
-        "origin_slot": 2,
-        "target_id": viewer_id,
-        "target_slot": 0,
-        "type": "STRING",
-    })
+    links.append(_link_v04_tuple(link_id, diagram_id, 2, viewer_id, 0, "STRING"))
 
     wf = {
         "lastNodeId": 8,
@@ -1354,22 +1390,8 @@ def _build_llm_ollama_workflow() -> dict:
             },
         ],
         "links": [
-            {
-                "id": 1,
-                "origin_id": 1,
-                "origin_slot": 0,
-                "target_id": 2,
-                "target_slot": 0,
-                "type": "STRING",
-            },
-            {
-                "id": 2,
-                "origin_id": 2,
-                "origin_slot": 2,
-                "target_id": 3,
-                "target_slot": 0,
-                "type": "STRING",
-            },
+            _link_v04_tuple(1, 1, 0, 2, 0, "STRING"),
+            _link_v04_tuple(2, 2, 2, 3, 0, "STRING"),
         ],
         "groups": [
             {"title": "LLM (Ollama) → Kroki", "bound": [80, 80, 780, 560], "nodes": [1, 2, 3]},

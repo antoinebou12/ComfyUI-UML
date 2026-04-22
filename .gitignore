@@ -45,6 +45,9 @@ ENV/
 .idea/
 *.pyc
 .vscode/
+.cursor/
+.claude/
+.codex
 *.swp
 *.swo
 

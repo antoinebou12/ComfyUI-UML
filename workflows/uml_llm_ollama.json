@@ -156,22 +156,22 @@
     }
   ],
   "links": [
-    {
-      "id": 1,
-      "origin_id": 1,
-      "origin_slot": 0,
-      "target_id": 2,
-      "target_slot": 0,
-      "type": "STRING"
-    },
-    {
-      "id": 2,
-      "origin_id": 2,
-      "origin_slot": 2,
-      "target_id": 3,
-      "target_slot": 0,
-      "type": "STRING"
-    }
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      2,
+      2,
+      3,
+      0,
+      "STRING"
+    ]
   ],
   "groups": [
     {

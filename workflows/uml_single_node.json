@@ -106,14 +106,14 @@
     }
   ],
   "links": [
-    {
-      "id": 1,
-      "origin_id": 1,
-      "origin_slot": 2,
-      "target_id": 2,
-      "target_slot": 0,
-      "type": "STRING"
-    }
+    [
+      1,
+      1,
+      2,
+      2,
+      0,
+      "STRING"
+    ]
   ],
   "groups": [],
   "config": {},

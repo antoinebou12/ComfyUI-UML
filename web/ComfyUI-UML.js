@@ -831,23 +831,57 @@ app.registerExtension({
   },
 });
 
+function _isValidV04LinkTuple(link) {
+  if (!Array.isArray(link) || link.length !== 6) return false;
+  const [a, b, c, d, e, f] = link;
+  for (const x of [a, b, c, d, e]) {
+    if (typeof x !== "number" && typeof x !== "string") return false;
+  }
+  if (typeof f !== "string" && typeof f !== "number") return false;
+  return true;
+}
+
 function _isLinksCorrupted(links) {
   if (!Array.isArray(links)) return true;
   if (links.length === 0) return false;
-  const first = links[0];
-  if (Array.isArray(first)) return true;
-  if (first && typeof first === "object") {
-    const required = new Set(["id", "origin_id", "origin_slot", "target_id", "target_slot", "type"]);
-    for (const link of links) {
-      if (!link || typeof link !== "object") return true;
-      for (const k of required) {
-        if (!(k in link)) return true;
-      }
-      if (link.origin_id == null && link.target_id == null) return true;
+  const dicts = links.filter((L) => L && typeof L === "object" && !Array.isArray(L));
+  const tuples = links.filter((L) => Array.isArray(L));
+  if (dicts.length + tuples.length !== links.length) return true;
+  if (dicts.length && tuples.length) return true;
+  if (tuples.length) return !tuples.every(_isValidV04LinkTuple);
+  const required = new Set(["id", "origin_id", "origin_slot", "target_id", "target_slot", "type"]);
+  for (const link of dicts) {
+    for (const k of required) {
+      if (!(k in link)) return true;
     }
-    return false;
+    if (link.origin_id == null && link.target_id == null) return true;
   }
-  return true;
+  return false;
+}
+
+/** ComfyUI v0.4 / LiteGraph expect links as 6-tuples; object-shaped links do not register in graph.getLink (comfy-test graphToPrompt InvalidLinkError). */
+function _ensureLinksAreV04Tuples(links) {
+  if (!Array.isArray(links)) return [];
+  const out = [];
+  for (const l of links) {
+    if (Array.isArray(l) && _isValidV04LinkTuple(l)) {
+      out.push(l.slice());
+      continue;
+    }
+    if (l && typeof l === "object" && !Array.isArray(l)) {
+      if (l.id == null || l.origin_id == null || l.target_id == null) continue;
+      const typ = l.type != null && typeof l.type === "string" ? l.type : String(l.type ?? "STRING");
+      out.push([
+        Number(l.id),
+        Number(l.origin_id),
+        Number(l.origin_slot),
+        Number(l.target_id),
+        Number(l.target_slot),
+        typ,
+      ]);
+    }
+  }
+  return out;
 }
 
 function _rebuildLinks(nodes) {
@@ -892,14 +926,14 @@ function _rebuildLinks(nodes) {
     const orig = idToOrigin.get(linkId);
     const tgt = idToTarget.get(linkId);
     if (!orig || !tgt) continue;
-    links.push({
-      id: linkId,
-      origin_id: orig[0],
-      origin_slot: orig[1],
-      target_id: tgt[0],
-      target_slot: tgt[1],
-      type: orig[2],
-    });
+    links.push([
+      linkId,
+      orig[0],
+      orig[1],
+      tgt[0],
+      tgt[1],
+      typeof orig[2] === "string" ? orig[2] : String(orig[2] ?? "STRING"),
+    ]);
   }
   return links;
 }
@@ -1054,14 +1088,24 @@ function _normalizeWorkflowData(raw) {
   } else if (data.links == null) {
     data.links = [];
   } else {
-    data.links = data.links.filter(
-      (l) => l && typeof l === "object" && !(l.origin_id == null && l.target_id == null)
-    );
+    data.links = data.links.filter((l) => {
+      if (Array.isArray(l) && l.length === 6) {
+        return !(l[1] == null && l[3] == null);
+      }
+      return l && typeof l === "object" && !(l.origin_id == null && l.target_id == null);
+    });
   }
+
+  data.links = _ensureLinksAreV04Tuples(data.links);
 
   let lastLink = data.lastLinkId != null ? data.lastLinkId : data.last_link_id;
   if ((data.links || []).length && (!lastLink || lastLink === 0)) {
-    lastLink = Math.max(...data.links.map((l) => Number(l?.id || 0)));
+    lastLink = Math.max(
+      ...data.links.map((l) => {
+        if (Array.isArray(l) && l.length >= 1) return Number(l[0] || 0);
+        return Number(l?.id || 0);
+      })
+    );
   }
   if (lastLink != null && lastLink !== undefined) data.lastLinkId = Number(lastLink);
   delete data.last_link_id;
@@ -1083,6 +1127,16 @@ function _normalizeWorkflowData(raw) {
   if (data.config == null) data.config = {};
   if (data.extra == null) data.extra = {};
   if (data.version == null) data.version = 0.4;
+
+  // LGraph.configure only uses createFromArray for links when version === 0.4 (strict).
+  // Workflow validation can bump version while leaving tuple links → LLink.create breaks and getLink fails.
+  if (
+    Array.isArray(data.links) &&
+    data.links.length > 0 &&
+    data.links.every((l) => Array.isArray(l) && _isValidV04LinkTuple(l))
+  ) {
+    data.version = 0.4;
+  }
 
   return data;
 }
@@ -1153,6 +1207,23 @@ app.registerExtension({
   },
 });
 
+/**
+ * Runs after Comfy.Validation.Workflows may mutate graphData. If tuple links remain but
+ * version was changed, rootGraph.configure would use LLink.create (object path) on arrays
+ * and never register links → InvalidLinkError in comfy-test execution.
+ */
+app.registerExtension({
+  name: "ComfyUI-UML.beforeConfigureGraph",
+  beforeConfigureGraph(graphData) {
+    if (!graphData || typeof graphData !== "object") return;
+    const links = graphData.links;
+    if (!Array.isArray(links) || links.length === 0) return;
+    if (links.every((l) => Array.isArray(l) && _isValidV04LinkTuple(l))) {
+      graphData.version = 0.4;
+    }
+  },
+});
+
 /** Ensure every node in graphToPrompt output has class_type and valid inputs so comfy-test validation passes. */
 function _normalizePromptNodes(promptObj) {
   if (!promptObj || typeof promptObj !== "object") return;
@@ -1165,6 +1236,30 @@ function _normalizePromptNodes(promptObj) {
     }
     return null;
   };
+  const getGraphLink = (linkId) => {
+    for (const g of graphs) {
+      const links = g?.links;
+      if (!links) continue;
+      const link = links[linkId] ?? links[String(linkId)];
+      if (link) return link;
+    }
+    return null;
+  };
+  const getLinkOriginTuple = (linkId) => {
+    const link = getGraphLink(linkId);
+    if (!link) return null;
+    if (Array.isArray(link)) {
+      const [, originId, originSlot] = link;
+      if (originId == null || originSlot == null) return null;
+      return [originId, originSlot];
+    }
+    if (typeof link === "object") {
+      const { origin_id: originId, origin_slot: originSlot } = link;
+      if (originId == null || originSlot == null) return null;
+      return [originId, originSlot];
+    }
+    return null;
+  };
   const getTypeFromGraph = (id) => {
     const n = getGraphNode(id);
     return (n && (n.type || n.comfyClass)) || null;
@@ -1173,6 +1268,12 @@ function _normalizePromptNodes(promptObj) {
     node.inputs && typeof node.inputs === "object" && ("UNKNOWN" in node.inputs || Object.keys(node.inputs).length === 0);
   const buildInputsFromGraphNode = (graphNode) => {
     const inputs = {};
+    const graphInputs = Array.isArray(graphNode.inputs) ? graphNode.inputs : [];
+    for (const inp of graphInputs) {
+      if (!inp || inp.name == null || inp.link == null) continue;
+      const originTuple = getLinkOriginTuple(inp.link);
+      if (originTuple) inputs[inp.name] = originTuple;
+    }
     const widgets = graphNode.widgets || [];
     const hidden = new Set(["unique_id", "prompt"]);
     for (const w of widgets) {
@@ -1215,7 +1316,7 @@ function _normalizePromptNodes(promptObj) {
     const graphNode = getGraphNode(id);
     if (!graphNode) return;
     const built = buildInputsFromGraphNode(graphNode);
-    if (Object.keys(built).length > 0) node.inputs = built;
+    if (Object.keys(built).length > 0) node.inputs = { ...node.inputs, ...built };
   };
 
   if (Array.isArray(promptObj)) {
