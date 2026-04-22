@@ -52,7 +52,7 @@ jobs:
           REQ_HASH=$(curl -fsSL "https://raw.githubusercontent.com/comfyanonymous/ComfyUI/${HEAD_SHA}/requirements.txt" | sha256sum | awk '{print $1}')
           echo "requirements_sha256=$REQ_HASH" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/uv
           key: uv-act-${{ runner.os }}-${{ steps.upstream.outputs.requirements_sha256 }}
@@ -60,7 +60,7 @@ jobs:
             uv-act-${{ runner.os }}-
 
       # Bump the key segment when changing the pinned Playwright version below.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: playwright-browsers
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
