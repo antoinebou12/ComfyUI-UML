@@ -38,7 +38,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       # Resolve default-branch HEAD so requirements.txt matches what a fresh clone would use.
       # (We do not cache the ComfyUI checkout: post-job cache would include custom_nodes after checkout.)
